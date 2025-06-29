@@ -1,0 +1,350 @@
+.pageContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 1rem;
+}
+
+.contentWrapper {
+  width: 100%;
+  max-width: 800px;
+}
+
+.title {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.subtitle {
+  text-align: center;
+  margin-bottom: 2rem;
+  color: #bbb;
+}
+
+.fetchForm {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.resultsContainer {
+  border: 1px solid #444;
+  padding: 1.5rem;
+  background-color: #2a2a2e;
+  border-radius: 8px;
+  margin-top: 2rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.label {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #bbb;
+}
+
+.input {
+  padding: 0.75rem;
+  font-size: 1rem;
+  background-color: #333;
+  border: 1px solid #666;
+  color: #f1f1f1;
+  border-radius: 4px;
+}
+
+.input[readonly] {
+  background-color: #444;
+}
+
+.button {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  color: white;
+  background-color: #007bff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  height: fit-content; /* Aligns button nicely with input */
+}
+
+.button:disabled {
+  background-color: #555;
+  cursor: not-allowed;
+}
+
+.message {
+  text-align: center;
+  margin-top: 1rem;
+  font-style: italic;
+}
+
+.error {
+  color: #dc3545;
+}
+
+.success {
+  color: #28a745;
+}
+
+.submitSection {
+  margin-top: 1.5rem; /* Adds space above the button */
+  display: flex;
+  justify-content: center; /* Horizontally centers the content */
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Clients List Styles */
+.clientsList {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 2px solid #444;
+}
+
+.clientsList h3 {
+  margin-bottom: 1.5rem;
+  color: #f1f1f1;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.tableContainer {
+  overflow-x: auto;
+  margin-top: 1.5rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2a2a2e 0%, #1e1e22 100%);
+  padding: 1rem;
+}
+
+.clientsTable {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #2a2a2e;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.clientsTable th,
+.clientsTable td {
+  padding: 1.25rem;
+  text-align: left;
+  border-bottom: 1px solid #444;
+}
+
+.clientsTable th {
+  background-color: #1e1e22;
+  font-weight: 600;
+  color: #f1f1f1;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.clientsTable td {
+  color: #ddd;
+  vertical-align: middle;
+}
+
+.clientsTable tr:hover {
+  background-color: #333338;
+  transition: background-color 0.2s ease;
+}
+
+.clientsTable tr:last-child td {
+  border-bottom: none;
+}
+
+/* Actions Column Styling */
+.clientsTable td:last-child {
+  width: 200px;
+  text-align: center;
+}
+
+.actionsContainer {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Action Buttons */
+.editButton,
+.deleteButton {
+  padding: 0.6rem 1.2rem;
+  font-size: 0.85rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  min-width: 75px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.editButton {
+  background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%);
+  color: #000;
+  box-shadow: 0 2px 4px rgba(255, 193, 7, 0.3);
+}
+
+.editButton:hover {
+  background: linear-gradient(135deg, #ffcd39 0%, #ffc107 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(255, 193, 7, 0.4);
+}
+
+.editButton:disabled {
+  background: #6c757d;
+  color: #fff;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.deleteButton {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
+}
+
+.deleteButton:hover {
+  background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(220, 53, 69, 0.4);
+}
+
+.deleteButton:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.cancelButton {
+  background-color: #6c757d !important;
+  color: white !important;
+}
+
+.cancelButton:hover {
+  background-color: #5a6268 !important;
+}
+
+/* Additional styling for better organization */
+.pageContainer {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d30 100%);
+  min-height: 100vh;
+  padding: 2rem 1rem;
+}
+
+.contentWrapper {
+  background-color: rgba(42, 42, 46, 0.8);
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+/* Empty state styling */
+.emptyState {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: #999;
+  font-style: italic;
+}
+
+.emptyState::before {
+  content: "📋";
+  display: block;
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+/* Loading state */
+.loadingState {
+  text-align: center;
+  padding: 2rem;
+  color: #ccc;
+}
+
+.loadingState::before {
+  content: "⏳";
+  display: block;
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .pageContainer {
+    padding: 1rem 0.5rem;
+  }
+
+  .contentWrapper {
+    padding: 1.5rem;
+    border-radius: 12px;
+  }
+  
+  .fetchForm {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .input {
+    width: 100% !important;
+  }
+  
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .tableContainer {
+    font-size: 0.9rem;
+    padding: 0.5rem;
+  }
+  
+  .clientsTable th,
+  .clientsTable td {
+    padding: 0.75rem 0.5rem;
+  }
+  
+  .actionsContainer {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .editButton,
+  .deleteButton {
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+    min-width: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .clientsTable th,
+  .clientsTable td {
+    padding: 0.5rem 0.25rem;
+    font-size: 0.85rem;
+  }
+  
+  .clientsTable th:first-child,
+  .clientsTable td:first-child {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
