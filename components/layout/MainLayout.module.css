@@ -1,0 +1,50 @@
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background-color: #1f1f21; /* A slightly different dark color for contrast */
+  border-bottom: 1px solid #444;
+  color: #f1f1f1;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.title a {
+  color: #f1f1f1;
+  text-decoration: none;
+}
+
+.nav {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.navLink {
+  color: #bbb;
+  text-decoration: none;
+  font-size: 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.navLink:hover {
+  color: #fff;
+  border-bottom-color: #007bff;
+}
+
+.mainContent {
+  padding: 2rem;
+}
+
+.activeLink {
+  color: #fff; /* Make the text white */
+  border-bottom-color: #007bff; /* Make the blue border always visible */
+}
