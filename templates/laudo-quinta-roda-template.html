@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laudo de Inspeção Técnica Quinta Roda - {{ordemServico}}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 9px;
+            line-height: 1.2; /* AUMENTADO para expandir */
+            color: #000;
+            background: white;
+            padding: 6px;
+            display: flex;
+            justify-content: center;
+        }
+        
+        .page {
+            max-width: 200mm;
+            min-height: 270mm;
+            margin: 0 auto;
+            overflow: visible;
+            padding: 6px; /* AUMENTADO para mais espaço */
+        }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px; /* AUMENTADO para expansão */
+            border-bottom: 2px solid #000;
+            padding-bottom: 6px; /* AUMENTADO */
+            height: 50px; /* AUMENTADO */
+        }
+        
+        .logo-section {
+            flex: 0 0 160px;
+        }
+        
+        .logo-section img {
+            width: 120px !important;
+            height: auto !important;
+            max-height: 40px !important;
+        }
+        
+        .company-info-section {
+            flex: 1;
+            text-align: center;
+            padding: 0 10px;
+        }
+        
+        .date-section {
+            flex: 0 0 100px;
+            text-align: right;
+            font-size: 9px;
+        }
+        
+        .company-info {
+            font-size: 8px; /* REDUZIDO para economizar espaço */
+            line-height: 1.1; /* COMPACTADO */
+            margin-bottom: 2px; /* REDUZIDO */
+            padding: 0 10px; /* COMPACTADO */
+        }
+        
+        .title {
+            font-size: 10px; /* LIGEIRAMENTE REDUZIDO */
+            font-weight: bold;
+            margin: 1px 0; /* COMPACTADO */
+            color: #2c3e50;
+        }
+        
+        .subtitle {
+            font-size: 8px; /* REDUZIDO para economia */
+            margin-bottom: 1px; /* COMPACTADO */
+            color: #666;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 3px; /* REDUZIDO para economizar espaço */
+            margin-top: 3px; /* COMPACTADO */
+            margin-bottom: 3px; /* COMPACTADO */
+        }
+        
+        .info-box {
+            border: 1px solid #333;
+            padding: 3px; /* REDUZIDO para fotos maiores */
+            background: #f8f9fa;
+            font-size: 8px; /* REDUZIDO */
+        }
+        
+        .info-box strong {
+            display: block;
+            margin-bottom: 1px; /* REDUZIDO */
+            color: #2c3e50;
+            font-size: 7px; /* REDUZIDO */
+        }
+
+        .basic-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3px; /* REDUZIDO */
+            margin-bottom: 3px; /* COMPACTADO */
+        }
+
+        .quinta-roda-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 3px; /* REDUZIDO */
+            margin-bottom: 3px; /* COMPACTADO */
+        }
+        
+        .section {
+            border: 1px solid #333;
+            margin-bottom: 3px; /* REDUZIDO para fotos maiores */
+            padding: 3px; /* COMPACTADO para economia */
+        }
+        
+        .section-header {
+            font-weight: bold;
+            font-size: 9px; /* LIGEIRAMENTE REDUZIDO */
+            background: #e9ecef;
+            padding: 2px; /* REDUZIDO */
+            margin: -3px -3px 2px -3px; /* AJUSTADO para novo padding */
+            border-left: 3px solid #007bff;
+        }
+
+        .examination-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 2px; /* REDUZIDO para economia */
+        }
+
+        .examination-table th,
+        .examination-table td {
+            border: 1px solid #333;
+            padding: 2px; /* REDUZIDO para economia vertical */
+            text-align: left;
+            font-size: 7px; /* REDUZIDO para mais espaço */
+            line-height: 1.1; /* COMPACTADO */
+        }
+
+        .examination-table th {
+            background: #f8f9fa;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .question-col {
+            width: 60%;
+        }
+
+        .answer-col {
+            width: 40%;
+            text-align: center;
+        }
+
+        .checkbox-group {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .checkbox-sim {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .checkbox-nao {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .result-section {
+            background: #e7f3ff;
+            border: 2px solid #007bff;
+            padding: 5px;
+            text-align: center;
+            margin: 4px 0;
+        }
+        
+        .result-title {
+            font-size: 8px;
+            font-weight: bold;
+            margin-bottom: 2px;
+            color: #007bff;
+        }
+        
+        .result-value {
+            font-size: 11px;
+            font-weight: bold;
+            padding: 4px;
+            border-radius: 2px;
+            display: inline-block;
+            min-width: 80px;
+        }
+        
+        .aprovado {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #28a745;
+        }
+        
+        .reprovado {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #dc3545;
+        }
+
+        .photo-section {
+            margin-bottom: 3px; /* REDUZIDO para economia */
+        }
+
+        .photos-grid-two {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px; /* REDUZIDO para economia */
+            margin-bottom: 2px; /* COMPACTADO */
+        }
+
+        .photo-single {
+            display: grid;
+            grid-template-columns: 1fr;
+            margin-bottom: 2px; /* COMPACTADO */
+        }
+
+        .photo-box {
+            border: 1px solid #333;
+            padding: 2px; /* OTIMIZADO para fotos maiores */
+            text-align: center;
+            min-height: 200px; /* AUMENTADO para fotos de qualidade */
+            max-height: 200px; /* ALTURA FIXA OTIMIZADA */
+            background: #f8f9fa;
+        }
+
+        .photo-title {
+            font-weight: bold;
+            font-size: 8px; /* OTIMIZADO para melhor legibilidade */
+            margin-bottom: 2px; /* ESPAÇO ADEQUADO */
+            color: #333;
+            text-transform: uppercase;
+            background: #e9ecef;
+            padding: 1px; /* PADDING BALANCEADO */
+            border-bottom: 1px solid #333;
+        }
+
+        .photo-placeholder {
+            border: 1px dashed #ccc;
+            min-height: 185px; /* OTIMIZADO para foto de qualidade */
+            max-height: 185px; /* ALTURA ADEQUADA PARA IMAGEM */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 8px;
+            font-style: italic;
+            overflow: hidden; /* MANTER CONTROLE DO OVERFLOW */
+        }
+
+        .photo-placeholder img {
+            width: 100%;
+            height: 100%;
+            max-width: none;
+            max-height: none;
+            object-fit: cover; /* PREENCHER COMPLETAMENTE O ESPAÇO */
+            object-position: center;
+            border-radius: 2px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1); /* SOMBRA SUTIL */
+        }
+
+        /* FOTO DO CHASSI - OTIMIZADA PARA VISUALIZAÇÃO */
+        .photo-chassi .photo-box {
+            min-height: 180px; /* TAMANHO ADEQUADO PARA CHASSI */
+            max-height: 180px; /* ALTURA FIXA OTIMIZADA */
+        }
+
+        .photo-chassi .photo-placeholder {
+            min-height: 165px; /* ESPAÇO ADEQUADO PARA IMAGEM */
+            max-height: 165px; /* ALTURA BALANCEADA */
+        }
+
+        .photo-chassi .photo-placeholder img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* PREENCHER ESPAÇO DISPONÍVEL */
+        }
+
+        .observations-section {
+            border: 1px solid #333;
+            padding: 4px;
+            margin: 2px 0;
+            min-height: 25px;
+        }
+        
+        .observations-title {
+            font-weight: bold;
+            font-size: 8px;
+            margin-bottom: 2px;
+            color: #2c3e50;
+        }
+        
+        .observations-content {
+            line-height: 1.2;
+            color: #495057;
+            font-size: 8px;
+        }
+
+        .signature-section {
+            margin-top: 4px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+        
+        .signature-box {
+            border: 1px solid #333;
+            min-height: 30px;
+            padding: 4px;
+            position: relative;
+            background: white;
+        }
+        
+        .signature-label {
+            font-weight: bold;
+            margin-bottom: 4px;
+            font-size: 8px;
+            color: #333;
+        }
+
+        .signature-area {
+            background: #f8f9fa;
+            border: 1px dashed #ccc;
+            min-height: 25px;
+            margin-bottom: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 7px;
+            font-style: italic;
+        }
+
+        .signature-info {
+            font-size: 7px;
+            color: #666;
+            text-align: center;
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 7px;
+            margin-top: 8px;
+            padding-top: 5px;
+            border-top: 1px solid #dee2e6;
+            color: #6c757d;
+            page-break-inside: avoid;
+        }
+
+        .logo-watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0.05;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .two-column-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+
+        .equipment-info {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 4px;
+            margin-bottom: 3px;
+            border-radius: 2px;
+            font-size: 8px;
+        }
+
+        .equipment-info strong {
+            color: #856404;
+        }
+
+        @media print {
+            body {
+                padding: 5px;
+                font-size: 10px;
+            }
+            .page {
+                margin: 0;
+                min-height: 295mm;
+                overflow: visible;
+            }
+            .signature-section {
+                page-break-inside: avoid;
+            }
+            .footer {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        
+        <div class="logo-watermark">
+            <img src="/logo.png" alt="Logo" style="width: 400px; height: auto;">
+        </div>
+        
+        <div class="header">
+            <div class="logo-section">
+                <img src="/logo.png" alt="Logo">
+            </div>
+            <div class="company-info-section">
+                <div class="company-info">
+                    <strong>EMPRESA EXEMPLO INSPEÇÕES LTDA</strong><br>
+                    Rua Exemplo 100 - Cidade Exemplo /RS<br>
+                    Fone: (11) 90000-0000
+                </div>
+                <div class="title">LAUDO DE INSPEÇÃO TÉCNICA DE QUINTA RODA</div>
+            </div>
+            <div class="date-section">
+                <strong>DATA:</strong> {{dataEmissao}}
+            </div>
+        </div>
+
+        <div class="info-grid">
+            <div class="info-box">
+                <strong>Cliente:</strong> {{cliente}}
+            </div>
+            <div class="info-box">
+                <strong>Placa Veículo:</strong> {{placaVeiculo}}
+            </div>
+            <div class="info-box">
+                <strong>Ordem de Serviço N°:</strong> {{ordemServico}}
+            </div>
+        </div>
+
+        <div class="basic-info-grid">
+            <div class="info-box">
+                <strong>Cód. Temporal:</strong> {{codTemporal}}
+            </div>
+            <div class="info-box">
+                <strong>Equipamento:</strong> {{equipamento}}
+            </div>
+        </div>
+
+        <div class="info-box" style="margin-bottom: 8px;">
+            <strong>A Quinta Roda tem Validade de Inspeção até:</strong> {{dataValidade}}
+        </div>
+
+        <!-- DADOS DA QUINTA RODA -->
+        <div class="quinta-roda-info-grid">
+            <div class="info-box">
+                <strong>Fabricante/Marca:</strong> {{fabricanteMarca}}
+            </div>
+            <div class="info-box">
+                <strong>Modelo:</strong> {{modelo}}
+            </div>
+            <div class="info-box">
+                <strong>Nº Identificação:</strong> {{numeroIdentificacao}}
+            </div>
+        </div>
+
+        <!-- SEÇÃO 1: EXAME VISUAL DA QUINTA RODA -->
+        <div class="section">
+            <div class="section-header">EXAME VISUAL DA QUINTA RODA</div>
+            
+            <table class="examination-table">
+                <thead>
+                    <tr>
+                        <th class="question-col">PERGUNTA</th>
+                        <th class="answer-col">RESPOSTA</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1. Apresenta Selo de Identificação da Conformidade?</td>
+                        <td class="answer-col">
+                            <div class="checkbox-group">
+                                <span class="checkbox-item {{seloIdentificacaoSim}}">
+                                    <input type="checkbox" {{seloIdentificacaoCheckedSim}}> SIM
+                                </span>
+                                <span class="checkbox-item {{seloIdentificacaoNao}}">
+                                    <input type="checkbox" {{seloIdentificacaoCheckedNao}}> NÃO
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2. Apresenta algum tipo de trinca, rachadura ou reparo?</td>
+                        <td class="answer-col">
+                            <div class="checkbox-group">
+                                <span class="checkbox-item {{presencaTrincasSim}}">
+                                    <input type="checkbox" {{presencaTrincasCheckedSim}}> SIM
+                                </span>
+                                <span class="checkbox-item {{presencaTrincasNao}}">
+                                    <input type="checkbox" {{presencaTrincasCheckedNao}}> NÃO
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>3. Apresenta-se íntegra, devidamente fixada?</td>
+                        <td class="answer-col">
+                            <div class="checkbox-group">
+                                <span class="checkbox-item {{integraFixadaSim}}">
+                                    <input type="checkbox" {{integraFixadaCheckedSim}}> SIM
+                                </span>
+                                <span class="checkbox-item {{integraFixadaNao}}">
+                                    <input type="checkbox" {{integraFixadaCheckedNao}}> NÃO
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>4. Os pinos de articulação estão íntegros?</td>
+                        <td class="answer-col">
+                            <div class="checkbox-group">
+                                <span class="checkbox-item {{pinosIntegrosSim}}">
+                                    <input type="checkbox" {{pinosIntegrosCheckedSim}}> SIM
+                                </span>
+                                <span class="checkbox-item {{pinosIntegrosNao}}">
+                                    <input type="checkbox" {{pinosIntegrosCheckedNao}}> NÃO
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>5. Os mancais apresentam-se ovalados? Há folga excessiva?</td>
+                        <td class="answer-col">
+                            <div class="checkbox-group">
+                                <span class="checkbox-item {{mancaisOvaladosSim}}">
+                                    <input type="checkbox" {{mancaisOvaladosCheckedSim}}> SIM
+                                </span>
+                                <span class="checkbox-item {{mancaisOvaladosNao}}">
+                                    <input type="checkbox" {{mancaisOvaladosCheckedNao}}> NÃO
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>6. O mecanismo de travamento e segurança do engate está operando corretamente?</td>
+                        <td class="answer-col">
+                            <div class="checkbox-group">
+                                <span class="checkbox-item {{mecanismoTravamentoSim}}">
+                                    <input type="checkbox" {{mecanismoTravamentoCheckedSim}}> SIM
+                                </span>
+                                <span class="checkbox-item {{mecanismoTravamentoNao}}">
+                                    <input type="checkbox" {{mecanismoTravamentoCheckedNao}}> NÃO
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>7. Os pinos estão devidamente presos, fixados por grampos ou outra forma adequada?</td>
+                        <td class="answer-col">
+                            <div class="checkbox-group">
+                                <span class="checkbox-item {{pinosPressosSim}}">
+                                    <input type="checkbox" {{pinosPressosCheckedSim}}> SIM
+                                </span>
+                                <span class="checkbox-item {{pinosPressosNao}}">
+                                    <input type="checkbox" {{pinosPressosCheckedNao}}> NÃO
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>8. Apresenta desgastes nos canais de lubrificação da quinta Roda?</td>
+                        <td class="answer-col">
+                            <div class="checkbox-group">
+                                <span class="checkbox-item {{desgastesCanaisSim}}">
+                                    <input type="checkbox" {{desgastesCanaisCheckedSim}}> SIM
+                                </span>
+                                <span class="checkbox-item {{desgastesCanaisNao}}">
+                                    <input type="checkbox" {{desgastesCanaisCheckedNao}}> NÃO
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>9. Os apoios ou sapatas apresentam trincas, folgas e/ou reparos?</td>
+                        <td class="answer-col">
+                            <div class="checkbox-group">
+                                <span class="checkbox-item {{apoiosSapatasSim}}">
+                                    <input type="checkbox" {{apoiosSapatasCheckedSim}}> SIM
+                                </span>
+                                <span class="checkbox-item {{apoiosSapatasNao}}">
+                                    <input type="checkbox" {{apoiosSapatasCheckedNao}}> NÃO
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>10. As cantoneiras e placas de montagem (mesa da 5ª roda) estão bem fixadas?</td>
+                        <td class="answer-col">
+                            <div class="checkbox-group">
+                                <span class="checkbox-item {{cantoneirasFixadasSim}}">
+                                    <input type="checkbox" {{cantoneirasFixadasCheckedSim}}> SIM
+                                </span>
+                                <span class="checkbox-item {{cantoneirasFixadasNao}}">
+                                    <input type="checkbox" {{cantoneirasFixadasCheckedNao}}> NÃO
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>11. Possui Aterramento e está devidamente fixado?</td>
+                        <td class="answer-col">
+                            <div class="checkbox-group">
+                                <span class="checkbox-item {{aterramentoFixadoSim}}">
+                                    <input type="checkbox" {{aterramentoFixadoCheckedSim}}> SIM
+                                </span>
+                                <span class="checkbox-item {{aterramentoFixadoNao}}">
+                                    <input type="checkbox" {{aterramentoFixadoCheckedNao}}> NÃO
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>12. Efetuado outro ensaio Complementar?</td>
+                        <td class="answer-col">
+                            <div class="checkbox-group">
+                                <span class="checkbox-item {{ensaioComplementarSim}}">
+                                    <input type="checkbox" {{ensaioComplementarCheckedSim}}> SIM
+                                </span>
+                                <span class="checkbox-item {{ensaioComplementarNao}}">
+                                    <input type="checkbox" {{ensaioComplementarCheckedNao}}> NÃO
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="result-section">
+                <div class="result-title">APÓS EXAME VISUAL DA QUINTA RODA A MESMA FOI CONSIDERADA:</div>
+                <div class="result-value {{resultadoFinalClass}}">
+                    {{resultadoFinal}}
+                </div>
+            </div>
+        </div>
+
+        <!-- SEÇÃO 2: REGISTRO FOTOGRÁFICO -->
+        <div class="section">
+            <div class="section-header">REGISTRO FOTOGRÁFICO</div>
+            
+            <!-- REGISTRO FOTOGRÁFICO DA QUINTA RODA - 2 fotos lado a lado -->
+            <div class="photo-section">
+                <div class="photos-grid-two">
+                    <div class="photo-box">
+                        <div class="photo-title">REGISTRO FOTOGRÁFICO DA QUINTA RODA</div>
+                        <div class="photo-placeholder">
+                            {{#if fotoQuintaRoda1Url}}
+                            <img src="{{fotoQuintaRoda1Url}}" alt="Primeira Foto da Quinta Roda">
+                            {{else}}
+                            Espaço para primeira foto da quinta roda
+                            {{/if}}
+                        </div>
+                    </div>
+                    <div class="photo-box">
+                        <div class="photo-title">REGISTRO FOTOGRÁFICO DA QUINTA RODA</div>
+                        <div class="photo-placeholder">
+                            {{#if fotoQuintaRoda2Url}}
+                            <img src="{{fotoQuintaRoda2Url}}" alt="Segunda Foto da Quinta Roda">
+                            {{else}}
+                            Espaço para segunda foto da quinta roda
+                            {{/if}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FOTO DO CHASSI - 1 foto centralizada COM ALTURA REDUZIDA -->
+            <div class="photo-section photo-chassi">
+                <div class="photo-single">
+                    <div class="photo-box">
+                        <div class="photo-title">FOTO DO CHASSI</div>
+                        <div class="photo-placeholder">
+                            {{#if fotoChassiUrl}}
+                            <img src="{{fotoChassiUrl}}" alt="Foto do Chassi">
+                            {{else}}
+                            Espaço para foto do chassi
+                            {{/if}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SEÇÃO 3: RESULTADO FINAL -->
+        <div class="two-column-grid">
+            <!-- Coluna Esquerda: Observações -->
+            <div>
+                <div class="observations-section">
+                    <div class="observations-title">Observações</div>
+                    <div class="observations-content">
+                        {{observacoes}}
+                    </div>
+                </div>
+
+                <div class="equipment-info">
+                    <strong>Equipamento Utilizado:</strong><br>
+                    Paquímetro: {{equipamento}}
+                </div>
+            </div>
+            
+            <!-- Coluna Direita: Normas e Resultado -->
+            <div>
+                <div class="observations-section">
+                    <div class="observations-title">Normas Aplicáveis</div>
+                    <div class="observations-content">
+                        {{normasAplicaveis}}
+                    </div>
+                </div>
+
+                <div class="result-section">
+                    <div class="result-title">RESULTADO FINAL DA INSPEÇÃO</div>
+                    <div class="result-value {{resultadoFinalClass}}">
+                        {{resultadoFinal}}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ASSINATURAS -->
+        <div class="signature-section">
+            <div class="signature-box">
+                <div class="signature-label">Inspetor Responsável</div>
+                <div class="signature-area">
+                    Espaço para assinatura
+                </div>
+                <div class="signature-info">
+                    {{inspetor}}<br>
+                    Responsável Técnico
+                </div>
+            </div>
+            
+            <div class="signature-box">
+                <div class="signature-label">Carimbo da Empresa</div>
+                <div class="signature-area">
+                    Espaço para carimbo
+                </div>
+                <div class="signature-info">
+                    EMPRESA EXEMPLO INSPEÇÕES LTDA<br>
+                    Responsável Técnico
+                </div>
+            </div>
+        </div>
+
+        <!-- RODAPÉ -->
+        <div class="footer">
+            <strong>Nota:</strong> Este relatório não pressupõe qualquer garantia explícita ou implícita dada pela EMPRESA EXEMPLO INSPEÇÕES LTDA, relativo à Quinta Roda Inspecionada. Não isentando o fabricante e proprietário de suas responsabilidades quanto aos danos pessoais, materiais e ambientais ou quaisquer perdas provocadas por problemas de instalação, construção, manutenção e operação incorreta da Quinta Roda, bem como do veículo ao qual está instalada.<br><br>
+            Documento gerado em {{dataGeracao}} - Sistema GTS<br>
+            Este laudo foi emitido com base nas inspeções realizadas na data especificada.
+        </div>
+    </div>
+</body>
+</html>

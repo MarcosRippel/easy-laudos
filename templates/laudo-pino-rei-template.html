@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laudo de Inspeção Técnica Pino Rei - {{ordemServico}}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 8px; /* REDUZIDO para economizar espaço */
+            line-height: 1.1; /* COMPACTADO */
+            color: #000;
+            background: white;
+            padding: 3px; /* REDUZIDO */
+            display: flex;
+            justify-content: center;
+        }
+        
+        .page {
+            max-width: 200mm;
+            min-height: 270mm;
+            margin: 0 auto;
+            overflow: visible;
+            padding: 3px; /* COMPACTADO */
+        }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 4px; /* COMPACTADO */
+            border-bottom: 2px solid #000;
+            padding-bottom: 3px; /* COMPACTADO */
+            height: 40px; /* COMPACTADO */
+        }
+        
+        .logo-section {
+            flex: 0 0 160px;
+        }
+        
+        .logo-section img {
+            width: 120px !important;
+            height: auto !important;
+            max-height: 40px !important;
+        }
+        
+        .company-info-section {
+            flex: 1;
+            text-align: center;
+            padding: 0 10px;
+        }
+        
+        .date-section {
+            flex: 0 0 100px;
+            text-align: right;
+            font-size: 9px;
+        }
+        
+        .company-info {
+            font-size: 9px;
+            line-height: 1.2;
+            margin-bottom: 3px;
+            padding: 0 15px;
+        }
+        
+        .title {
+            font-size: 11px;
+            font-weight: bold;
+            margin: 2px 0;
+            color: #2c3e50;
+        }
+        
+        .subtitle {
+            font-size: 9px;
+            margin-bottom: 2px;
+            color: #666;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 3px; /* COMPACTADO */
+            margin-top: 4px; /* COMPACTADO */
+            margin-bottom: 3px; /* COMPACTADO */
+        }
+        
+        .info-box {
+            border: 1px solid #333;
+            padding: 3px; /* COMPACTADO */
+            background: #f8f9fa;
+            font-size: 8px; /* REDUZIDO */
+        }
+        
+        .info-box strong {
+            display: block;
+            margin-bottom: 2px;
+            color: #2c3e50;
+            font-size: 8px;
+        }
+
+        .basic-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px; /* AUMENTADO */
+            margin-bottom: 6px; /* AUMENTADO */
+        }
+        
+        .section {
+            border: 1px solid #333;
+            margin-bottom: 6px; /* AUMENTADO para expansão */
+            padding: 7px; /* AUMENTADO para ocupar mais espaço */
+        }
+        
+        .section-header {
+            font-weight: bold;
+            font-size: 10px;
+            background: #e9ecef;
+            padding: 4px; /* AUMENTADO */
+            margin: -7px -7px 5px -7px; /* AJUSTADO para novo padding */
+            border-left: 3px solid #007bff;
+        }
+
+        .examination-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 5px; /* AUMENTADO para expansão */
+        }
+
+        .examination-table th,
+        .examination-table td {
+            border: 1px solid #333;
+            padding: 5px; /* AUMENTADO para expansão vertical */
+            text-align: left;
+            font-size: 8px;
+            line-height: 1.3; /* AUMENTADO para mais espaço */
+        }
+
+        .examination-table th {
+            background: #f8f9fa;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .question-col {
+            width: 60%;
+        }
+
+        .answer-col {
+            width: 40%;
+            text-align: center;
+        }
+
+        .checkbox-group {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .checkbox-sim {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .checkbox-nao {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .result-section {
+            background: #e7f3ff;
+            border: 2px solid #007bff;
+            padding: 5px;
+            text-align: center;
+            margin: 4px 0;
+        }
+        
+        .result-title {
+            font-size: 8px;
+            font-weight: bold;
+            margin-bottom: 2px;
+            color: #007bff;
+        }
+        
+        .result-value {
+            font-size: 11px;
+            font-weight: bold;
+            padding: 4px;
+            border-radius: 2px;
+            display: inline-block;
+            min-width: 80px;
+        }
+        
+        .aprovado {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #28a745;
+        }
+        
+        .reprovado {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #dc3545;
+        }
+
+        .photo-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 4px; /* COMPACTO para caber */
+            margin-bottom: 4px; /* COMPACTO */
+        }
+
+        .photo-box {
+            border: 1px solid #333; /* AJUSTADO */
+            padding: 3px; /* COMPACTO */
+            text-align: center;
+            min-height: 50px; /* COMPACTO para caber */
+            background: #f8f9fa;
+        }
+
+        .photo-title {
+            font-weight: bold;
+            font-size: 7px;
+            margin-bottom: 3px;
+            color: #333;
+        }
+
+        .photo-placeholder {
+            border: 1px dashed #ccc;
+            min-height: 200px; /* AUMENTADO ainda mais para fotos menos cortadas */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 7px;
+            font-style: italic;
+        }
+
+        .photo-placeholder img {
+            width: 100%;
+            height: 200px; /* ALTURA AUMENTADA para menos corte */
+            object-fit: cover; /* PREENCHE TODO O ESPAÇO sem sobras */
+            object-position: center; /* CENTRALIZA a imagem */
+        }
+
+        .observations-section {
+            border: 1px solid #333;
+            padding: 4px; /* COMPACTO para caber */
+            margin: 2px 0; /* COMPACTO */
+            min-height: 25px; /* COMPACTO */
+        }
+        
+        .observations-title {
+            font-weight: bold;
+            font-size: 8px; /* AJUSTADO para caber */
+            margin-bottom: 2px; /* COMPACTO */
+            color: #2c3e50;
+        }
+        
+        .observations-content {
+            line-height: 1.2; /* BALANCEADO */
+            color: #495057;
+            font-size: 8px; /* AJUSTADO para caber */
+        }
+
+        .signature-section {
+            margin-top: 4px; /* COMPACTO para caber */
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px; /* BALANCEADO */
+        }
+        
+        .signature-box {
+            border: 1px solid #333;
+            min-height: 30px; /* COMPACTO para caber */
+            padding: 4px; /* COMPACTO */
+            position: relative;
+            background: white;
+        }
+        
+        .signature-label {
+            font-weight: bold;
+            margin-bottom: 4px;
+            font-size: 8px;
+            color: #333;
+        }
+
+        .signature-area {
+            background: #f8f9fa;
+            border: 1px dashed #ccc;
+            min-height: 25px;
+            margin-bottom: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 7px;
+            font-style: italic;
+        }
+
+        .signature-info {
+            font-size: 7px;
+            color: #666;
+            text-align: center;
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 7px;
+            margin-top: 8px;
+            padding-top: 5px;
+            border-top: 1px solid #dee2e6;
+            color: #6c757d;
+            page-break-inside: avoid;
+        }
+
+        .logo-watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0.05;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .two-column-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px; /* BALANCEADO mas centralizado */
+            margin-bottom: 4px; /* COMPACTO */
+        }
+
+        .equipment-info {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 4px; /* COMPACTO para caber */
+            margin-bottom: 3px; /* COMPACTO */
+            border-radius: 2px;
+            font-size: 8px; /* AJUSTADO para caber */
+        }
+
+        .equipment-info strong {
+            color: #856404;
+        }
+
+        @media print {
+            body {
+                padding: 5px;
+                font-size: 10px;
+            }
+            .page {
+                margin: 0;
+                min-height: 295mm;
+                overflow: visible;
+            }
+            .signature-section {
+                page-break-inside: avoid;
+            }
+            .footer {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        
+        <div class="logo-watermark">
+            <img src="/logo.png" alt="Logo" style="width: 400px; height: auto;">
+        </div>
+        
+        <div class="header">
+            <div class="logo-section">
+                <img src="/logo.png" alt="Logo">
+            </div>
+            <div class="company-info-section">
+                <div class="company-info">
+                    <strong>EMPRESA EXEMPLO INSPEÇÕES LTDA</strong><br>
+                    Rua Exemplo 100 - Cidade Exemplo /RS<br>
+                    Fone: (11) 90000-0000
+                </div>
+                <div class="title">LAUDO DE INSPEÇÃO TÉCNICA PINO REI E MESA DE PINO REI</div>
+            </div>
+            <div class="date-section">
+                <strong>DATA:</strong> {{dataEmissao}}
+            </div>
+        </div>
+
+        <div class="info-grid">
+            <div class="info-box">
+                <strong>Cliente:</strong> {{cliente}}
+            </div>
+            <div class="info-box">
+                <strong>Placa Veículo:</strong> {{placaVeiculo}}
+            </div>
+            <div class="info-box">
+                <strong>Ordem de Serviço N°:</strong> {{ordemServico}}
+            </div>
+        </div>
+
+        <div class="basic-info-grid">
+            <div class="info-box">
+                <strong>Cód. Temporal:</strong> {{codTemporal}}
+            </div>
+            <div class="info-box">
+                <strong>Equipamento:</strong> {{equipamento}}
+            </div>
+        </div>
+
+        <div class="info-box" style="margin-bottom: 8px;">
+            <strong>O Conjunto Mesa e Pino Rei tem Validade de Inspeção até:</strong> {{dataValidade}}
+        </div>
+
+        <!-- SEÇÃO 1: EXAME VISUAL DO PINO REI -->
+        <div class="section">
+            <div class="section-header">EXAME VISUAL DE PINO REI</div>
+            
+            <table class="examination-table">
+                <thead>
+                    <tr>
+                        <th class="question-col">PERGUNTA</th>
+                        <th class="answer-col">RESPOSTA</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1. O Pino Rei encontra-se na Posição Vertical em Relação a Mesa?</td>
+                        <td class="answer-col">
+                            <div class="checkbox-group">
+                                <span class="checkbox-item {{posicaoVerticalSim}}">
+                                    <input type="checkbox" {{posicaoVerticalCheckedSim}}> SIM
+                                </span>
+                                <span class="checkbox-item {{posicaoVerticalNao}}">
+                                    <input type="checkbox" {{posicaoVerticalCheckedNao}}> NÃO
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2. Apresenta algum tipo de trinca ou reparo por solda?</td>
+                        <td class="answer-col">
+                            <div class="checkbox-group">
+                                <span class="checkbox-item {{presencaTrincasSim}}">
+                                    <input type="checkbox" {{presencaTrincasCheckedSim}}> SIM
+                                </span>
+                                <span class="checkbox-item {{presencaTrincasNao}}">
+                                    <input type="checkbox" {{presencaTrincasCheckedNao}}> NÃO
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>3. O Pino Rei encontra-se íntegro, bem fixado?</td>
+                        <td class="answer-col">
+                            <div class="checkbox-group">
+                                <span class="checkbox-item {{integridadeFixacaoSim}}">
+                                    <input type="checkbox" {{integridadeFixacaoCheckedSim}}> SIM
+                                </span>
+                                <span class="checkbox-item {{integridadeFixacaoNao}}">
+                                    <input type="checkbox" {{integridadeFixacaoCheckedNao}}> NÃO
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>4. Apresenta Selo de Identificação (Quando Aplicável)?</td>
+                        <td class="answer-col">
+                            <div class="checkbox-group">
+                                <span class="checkbox-item {{seloIdentificacaoSim}}">
+                                    <input type="checkbox" {{seloIdentificacaoCheckedSim}}> SIM
+                                </span>
+                                <span class="checkbox-item {{seloIdentificacaoNao}}">
+                                    <input type="checkbox" {{seloIdentificacaoCheckedNao}}> NÃO
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>5. O Pino Rei é fixado por?</td>
+                        <td class="answer-col">
+                            <div class="checkbox-group">
+                                <span class="checkbox-item {{tipoFixacaoSolda}}">
+                                    <input type="checkbox" {{tipoFixacaoCheckedSolda}}> SOLDA
+                                </span>
+                                <span class="checkbox-item {{tipoFixacaoFlangeado}}">
+                                    <input type="checkbox" {{tipoFixacaoCheckedFlangeado}}> FLANGEADO
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>6. O diâmetro registrado do Pino Rei (mm):</td>
+                        <td class="answer-col">
+                            <strong>{{diametroRegistrado}} mm</strong>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>7. Apresenta bom estado de conservação, sem corrosões, sem trincas e desgastes?</td>
+                        <td class="answer-col">
+                            <div class="checkbox-group">
+                                <span class="checkbox-item {{estadoConservacaoSim}}">
+                                    <input type="checkbox" {{estadoConservacaoCheckedSim}}> SIM
+                                </span>
+                                <span class="checkbox-item {{estadoConservacaoNao}}">
+                                    <input type="checkbox" {{estadoConservacaoCheckedNao}}> NÃO
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="result-section">
+                <div class="result-title">APÓS EXAME VISUAL E MEDIÇÃO DO PINO REI O MESMO FOI CONSIDERADO:</div>
+                <div class="result-value {{resultadoPinoReiClass}}">
+                    {{resultadoPinoRei}}
+                </div>
+            </div>
+        </div>
+
+        <!-- SEÇÃO 2: INSPEÇÃO VISUAL DA MESA DO PINO REI -->
+        <div class="section">
+            <div class="section-header">INSPEÇÃO VISUAL DA MESA DO PINO REI</div>
+            
+            <table class="examination-table">
+                <thead>
+                    <tr>
+                        <th class="question-col">PERGUNTA</th>
+                        <th class="answer-col">RESPOSTA</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1. A Mesa do Pino Rei é fixada por?</td>
+                        <td class="answer-col">
+                            <div class="checkbox-group">
+                                <span class="checkbox-item {{tipoFixacaoMesaSolda}}">
+                                    <input type="checkbox" {{tipoFixacaoMesaCheckedSolda}}> SOLDA
+                                </span>
+                                <span class="checkbox-item {{tipoFixacaoMesaAparafusada}}">
+                                    <input type="checkbox" {{tipoFixacaoMesaCheckedAparafusada}}> APARAFUSADA
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2. A Mesa do Pino Rei está bem fixada?</td>
+                        <td class="answer-col">
+                            <div class="checkbox-group">
+                                <span class="checkbox-item {{mesaBemFixadaSim}}">
+                                    <input type="checkbox" {{mesaBemFixadaCheckedSim}}> SIM
+                                </span>
+                                <span class="checkbox-item {{mesaBemFixadaNao}}">
+                                    <input type="checkbox" {{mesaBemFixadaCheckedNao}}> NÃO
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>3. Apresenta bom estado de conservação, sem corrosões, sem trincas e desgastes?</td>
+                        <td class="answer-col">
+                            <div class="checkbox-group">
+                                <span class="checkbox-item {{mesaEstadoConservacaoSim}}">
+                                    <input type="checkbox" {{mesaEstadoConservacaoCheckedSim}}> SIM
+                                </span>
+                                <span class="checkbox-item {{mesaEstadoConservacaoNao}}">
+                                    <input type="checkbox" {{mesaEstadoConservacaoCheckedNao}}> NÃO
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>4. A Mesa apresenta algum reparo por solda?</td>
+                        <td class="answer-col">
+                            <div class="checkbox-group">
+                                <span class="checkbox-item {{mesaReparoSoldaSim}}">
+                                    <input type="checkbox" {{mesaReparoSoldaCheckedSim}}> SIM
+                                </span>
+                                <span class="checkbox-item {{mesaReparoSoldaNao}}">
+                                    <input type="checkbox" {{mesaReparoSoldaCheckedNao}}> NÃO
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="result-section">
+                <div class="result-title">APÓS EXAME VISUAL DA MESA DO PINO REI A MESMA FOI CONSIDERADA:</div>
+                <div class="result-value {{resultadoMesaClass}}">
+                    {{resultadoMesa}}
+                </div>
+            </div>
+        </div>
+
+        <!-- SEÇÃO 3: ENSAIOS COMPLEMENTARES -->
+        <div class="section">
+            <div class="section-header">ENSAIOS COMPLEMENTARES</div>
+            
+            <table class="examination-table">
+                <tbody>
+                    <tr>
+                        <td class="question-col">Efetuado outro ensaio complementar?</td>
+                        <td class="answer-col">
+                            <div class="checkbox-group">
+                                <span class="checkbox-item {{ensaioComplementarSim}}">
+                                    <input type="checkbox" {{ensaioComplementarCheckedSim}}> SIM
+                                </span>
+                                <span class="checkbox-item {{ensaioComplementarNao}}">
+                                    <input type="checkbox" {{ensaioComplementarCheckedNao}}> NÃO
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    {{#if ensaioComplementarSim}}
+                    <tr>
+                        <td class="question-col">Qual?</td>
+                        <td class="answer-col">
+                            <strong>{{qualEnsaio}}</strong>
+                        </td>
+                    </tr>
+                    {{/if}}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- SEÇÃO 4: REGISTRO FOTOGRÁFICO -->
+        <div class="section">
+            <div class="section-header">REGISTRO FOTOGRÁFICO</div>
+            
+            <div class="photo-section">
+                <div class="photo-box">
+                    <div class="photo-title">FOTO DO CHASSI</div>
+                    <div class="photo-placeholder">
+                        {{#if fotoChassiUrl}}
+                        <img src="{{fotoChassiUrl}}" alt="Foto do Chassi">
+                        {{else}}
+                        Espaço para foto do chassi
+                        {{/if}}
+                    </div>
+                </div>
+                
+                <div class="photo-box">
+                    <div class="photo-title">REGISTRO FOTOGRÁFICO PINO REI</div>
+                    <div class="photo-placeholder">
+                        {{#if fotoPinoReiUrl}}
+                        <img src="{{fotoPinoReiUrl}}" alt="Foto do Pino Rei">
+                        {{else}}
+                        Espaço para foto do pino rei
+                        {{/if}}
+                    </div>
+                </div>
+                
+                <div class="photo-box">
+                    <div class="photo-title">REGISTRO FOTOGRÁFICO DA MESA DO PINO REI</div>
+                    <div class="photo-placeholder">
+                        {{#if fotoMesaUrl}}
+                        <img src="{{fotoMesaUrl}}" alt="Foto da Mesa do Pino Rei">
+                        {{else}}
+                        Espaço para foto da mesa
+                        {{/if}}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SEÇÃO 5: RESULTADO FINAL -->
+        <div class="two-column-grid">
+            <!-- Coluna Esquerda: Observações -->
+            <div>
+                <div class="observations-section">
+                    <div class="observations-title">Observações</div>
+                    <div class="observations-content">
+                        {{observacoes}}
+                    </div>
+                </div>
+
+                <div class="equipment-info">
+                    <strong>Equipamento Utilizado:</strong><br>
+                    Paquimetro: {{equipamento}}
+                </div>
+            </div>
+            
+            <!-- Coluna Direita: Resultado Final -->
+            <div>
+                <div class="result-section">
+                    <div class="result-title">RESULTADO FINAL DA INSPEÇÃO</div>
+                    <div class="result-value {{resultadoGeralClass}}">
+                        {{resultadoGeral}}
+                    </div>
+                </div>
+
+                <div class="observations-section">
+                    <div class="observations-title">Normas Aplicáveis</div>
+                    <div class="observations-content">
+                        Portaria nº 457/08, Portaria nº 70/2008
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ASSINATURAS -->
+        <div class="signature-section">
+            <div class="signature-box">
+                <div class="signature-label">Inspetor Responsável</div>
+                <div class="signature-area">
+                    Espaço para assinatura
+                </div>
+                <div class="signature-info">
+                    {{inspetor}}<br>
+                    Responsável Técnico
+                </div>
+            </div>
+            
+            <div class="signature-box">
+                <div class="signature-label">Carimbo da Empresa</div>
+                <div class="signature-area">
+                    Espaço para carimbo
+                </div>
+                <div class="signature-info">
+                    EMPRESA EXEMPLO INSPEÇÕES LTDA<br>
+                    Responsável Técnico
+                </div>
+            </div>
+        </div>
+
+        <!-- RODAPÉ -->
+        <div class="footer">
+            <strong>Nota:</strong> Este relatório não pressupõe qualquer garantia explícita ou implícita dada pela EMPRESA EXEMPLO INSPEÇÕES LTDA, relativo ao Pino Rei e Mesa Inspecionada. Não isentando o fabricante e proprietário de suas responsabilidades quanto aos danos pessoais, materiais e ambientais ou quaisquer perdas provocadas por problemas de instalação, construção, manutenção e operação incorreta do Pino Rei e da Mesa do Pino Rei, bem como do veículo ao qual estão instalados.<br><br>
+            Documento gerado em {{dataGeracao}} - Sistema GTS<br>
+            Este laudo foi emitido com base nas inspeções realizadas na data especificada.
+        </div>
+    </div>
+</body>
+</html>
