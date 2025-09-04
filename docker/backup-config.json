@@ -1,0 +1,16 @@
+{
+  "database_backup": true,
+  "uploads_backup": true,
+  "logs_backup": true,
+  "full_backup": false,
+  "retention_days": 7,
+  "max_backups": 10,
+  "compression": true,
+  "encrypt": false,
+  "schedule": {
+    "database": "0 */6 * * *",
+    "uploads": "0 2 * * *",
+    "logs": "0 1 * * 0",
+    "full": "0 3 * * 0"
+  }
+}

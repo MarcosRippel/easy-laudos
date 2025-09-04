@@ -1,0 +1,11 @@
+{
+  "container_mode": true,
+  "auto_restart": true,
+  "backup_enabled": true,
+  "backup_interval_hours": 6,
+  "max_restarts": 5,
+  "health_check_interval": 30,
+  "nextjs_startup_timeout": 60,
+  "database_check_timeout": 30,
+  "graceful_shutdown_timeout": 10
+}
