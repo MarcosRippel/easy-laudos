@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  nginx-proxy:
+    image: nginx:alpine
+    container_name: inspetor-proxy
+    ports:
+      - "9444:9444"
+      - "3001:3001"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    restart: unless-stopped
+    networks:
+      - inspetor-network
+
+  inspetor-app:
+    build: .
+    container_name: inspetor-app
+    ports:
+      - "3002:3000"
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - .:/app
+      - /app/node_modules
+    restart: unless-stopped
+    networks:
+      - inspetor-network
+
+networks:
+  inspetor-network:
+    driver: bridge
