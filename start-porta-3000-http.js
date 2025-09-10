@@ -1,0 +1,78 @@
+/**
+ * Script para iniciar servidor HTTP local na porta 3000
+ * O Cloudflare Tunnel fornece o HTTPS automaticamente
+ */
+
+const { createServer } = require('http');
+const { parse } = require('url');
+const next = require('next');
+
+// Configurações - servidor HTTP simples na porta 3000
+const dev = process.env.NODE_ENV !== 'production';
+const hostname = '0.0.0.0';
+const port = 3000;
+
+console.log('🔄 Preparando aplicação Next.js...');
+
+// Criar aplicação Next.js
+const app = next({ dev, hostname, port });
+const handle = app.getRequestHandler();
+
+app.prepare().then(() => {
+    // Criar servidor HTTP simples (sem SSL)
+    createServer(async (req, res) => {
+        try {
+            const parsedUrl = parse(req.url, true);
+            await handle(req, res, parsedUrl);
+        } catch (err) {
+            console.error('Erro ao processar requisição:', err);
+            res.statusCode = 500;
+            res.end('Erro interno do servidor');
+        }
+    }).listen(port, (err) => {
+        if (err) throw err;
+        
+        console.log('');
+        console.log('🚀 Sistema Emissor de Laudos - HTTP na porta 3000!');
+        console.log('================================================');
+        console.log('');
+        console.log('🌐 URLs de Acesso:');
+        console.log('');
+        console.log('  Local (HTTP):');
+        console.log(`  ├─ http://localhost:${port}`);
+        console.log(`  ├─ http://127.0.0.1:${port}`);
+        console.log(`  └─ http://177.126.153.190:${port}`);
+        console.log('');
+        console.log('  Via Cloudflare Tunnel (HTTPS):');
+        console.log('  └─ https://gs.terpens.com.br');
+        console.log('');
+        console.log('================================================');
+        console.log('✅ Sistema pronto na porta 3000');
+        console.log('🔒 HTTPS fornecido automaticamente pelo Cloudflare');
+        console.log('');
+        console.log('Para parar o servidor: CTRL+C');
+        console.log('');
+    });
+});
+
+// Tratamento de erros
+process.on('uncaughtException', (err) => {
+    console.error('❌ Erro não capturado:', err);
+    process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ Promise rejeitada:', reason);
+    process.exit(1);
+});
+
+// Tratamento de sinal de interrupção
+process.on('SIGINT', () => {
+    console.log('\n👋 Encerrando servidor HTTP...');
+    process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+    console.log('\n👋 Encerrando servidor HTTP...');
+    process.exit(0);
+});
