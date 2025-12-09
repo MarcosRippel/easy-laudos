@@ -1,0 +1,347 @@
+@import "tailwindcss";
+
+:root {
+  --background: #1a1a1a;
+  --foreground: #ededed;
+  
+  /* Variáveis de cor para página de login */
+  --primary: #047857;
+  --secondary: #10b981;
+  --accent: #059669;
+  --text-light: #f8f9fa;
+  --text-dark: #1f2937;
+  --gradient-primary: linear-gradient(135deg, #047857 0%, #10b981 100%);
+  --gradient-overlay: linear-gradient(135deg, rgba(4, 120, 87, 0.95), rgba(16, 185, 129, 0.85));
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #1a1a1a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 25%, #1a1a1a 50%, #2d2d2d 75%, #1a1a1a 100%) !important;
+  background-size: 400% 400% !important;
+  background-attachment: fixed !important;
+  animation: gradientShift 15s ease infinite;
+  color: var(--foreground) !important;
+  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Forçar fundo escuro em todo o HTML */
+html {
+  background: #1a1a1a !important;
+}
+
+/* NextJS root elements */
+#__next {
+  background: transparent !important;
+  min-height: 100vh;
+}
+
+/* Garantir fundo escuro em todos os elementos */
+html, body, #__next, main, div[data-nextjs-scroll-focus-boundary] {
+  background: transparent !important;
+}
+
+/* Containers principais sempre transparentes */
+.container, section, main, article, aside, nav, header, footer {
+  background: transparent !important;
+}
+
+/* Forçar fundo das páginas individuais */
+[data-nextjs-router] {
+  background: transparent !important;
+}
+
+/* Elementos de formulário com fundo escuro - EXCETO NA PÁGINA DE LOGIN */
+body:not(.login-page) input,
+body:not(.login-page) select,
+body:not(.login-page) textarea {
+  background-color: #2a2a2a !important;
+  color: #eee !important;
+  border: 1px solid #555 !important;
+}
+
+body:not(.login-page) input:focus,
+body:not(.login-page) select:focus,
+body:not(.login-page) textarea:focus {
+  background-color: #333 !important;
+  border-color: #007bff !important;
+}
+
+/* Cards e containers com fundo semi-transparente */
+.card, .panel, .modal {
+  background: rgba(42, 42, 46, 0.95) !important;
+  backdrop-filter: blur(10px);
+}
+
+/* Tabelas com fundo escuro */
+table {
+  background: rgba(51, 51, 51, 0.95) !important;
+}
+
+/* Dropdowns e menus */
+.dropdown, .menu {
+  background: rgba(42, 42, 46, 0.98) !important;
+  backdrop-filter: blur(15px);
+}
+
+/* Loading e placeholders */
+.loading, .placeholder {
+  background: rgba(42, 42, 46, 0.8) !important;
+}
+
+/* Fundo com efeitos sinuosos e raios */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(ellipse at 20% 80%, rgba(0, 123, 255, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(23, 162, 184, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 40% 40%, rgba(111, 66, 193, 0.04) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: -2;
+}
+
+/* Efeitos de raios sinuosos */
+body::after {
+  content: '';
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: 
+    conic-gradient(from 0deg at 50% 50%, 
+      transparent 0deg, 
+      rgba(0, 123, 255, 0.03) 30deg, 
+      transparent 60deg, 
+      rgba(23, 162, 184, 0.02) 120deg, 
+      transparent 150deg, 
+      rgba(111, 66, 193, 0.02) 240deg, 
+      transparent 270deg, 
+      rgba(40, 167, 69, 0.02) 330deg, 
+      transparent 360deg
+    );
+  animation: rotateRays 30s linear infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Padrão de ondas sinuosas */
+body {
+  background-image: 
+    radial-gradient(circle at 25% 25%, rgba(0, 123, 255, 0.05) 0%, transparent 70%),
+    radial-gradient(circle at 75% 75%, rgba(23, 162, 184, 0.03) 0%, transparent 70%),
+    linear-gradient(45deg, 
+      transparent 40%, 
+      rgba(255, 255, 255, 0.02) 50%, 
+      transparent 60%
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px,
+      rgba(255, 255, 255, 0.01) 1px,
+      transparent 2px,
+      transparent 40px
+    );
+}
+
+/* Animações */
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes rotateRays {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Animação de loading global */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Efeito de flutuação para elementos */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Efeito de pulsação sutil */
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #2a2a2a;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #007bff, #17a2b8);
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #0056b3, #138496);
+}
+
+/* Melhoria na seleção de texto */
+::selection {
+  background: rgba(0, 123, 255, 0.3);
+  color: #ffffff;
+}
+
+/* Efeito de hover global para botões */
+button, .btn {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button:hover, .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+/* Efeito de foco melhorado */
+*:focus {
+  outline: 2px solid rgba(0, 123, 255, 0.5);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Garantir fundo escuro em todos os elementos */
+html, body, #__next, main, div[data-nextjs-scroll-focus-boundary] {
+  background: transparent !important;
+}
+
+/* Forçar fundo escuro em todas as páginas */
+* {
+  box-sizing: border-box;
+}
+
+/* Containers principais sempre transparentes - EXCETO header */
+.container, section, main, article, aside, nav, footer {
+  background: transparent !important;
+}
+
+/* Header mantém seu fundo escuro */
+header {
+  background: #1f1f21 !important;
+}
+
+/* Forçar fundo das páginas individuais */
+[data-nextjs-router] {
+  background: transparent !important;
+}
+
+/* Elementos de formulário com fundo escuro - EXCETO na página de login */
+input:not(.loginCard input),
+select:not(.loginCard select),
+textarea:not(.loginCard textarea) {
+  background-color: #2a2a2a !important;
+  color: #eee !important;
+  border: 1px solid #555 !important;
+}
+
+input:not(.loginCard input):focus,
+select:not(.loginCard select):focus,
+textarea:not(.loginCard textarea):focus {
+  background-color: #333 !important;
+  border-color: #007bff !important;
+}
+
+/* Cards e containers com fundo semi-transparente */
+.card, .panel, .modal {
+  background: rgba(42, 42, 46, 0.95) !important;
+  backdrop-filter: blur(10px);
+}
+
+/* Tabelas com fundo escuro */
+table {
+  background: rgba(51, 51, 51, 0.95) !important;
+}
+
+/* Dropdowns e menus */
+.dropdown, .menu {
+  background: rgba(42, 42, 46, 0.98) !important;
+  backdrop-filter: blur(15px);
+}
+
+/* Loading e placeholders */
+.loading, .placeholder {
+  background: rgba(42, 42, 46, 0.8) !important;
+}
+
+/* Página de login - permitir estilos próprios */
+body.login-page,
+body.login-page * {
+  background-color: initial !important;
+  color: initial !important;
+  border-color: initial !important;
+}
+
+/* Garantir que o body da página de login não tenha fundo escuro */
+body.login-page {
+  background: transparent !important;
+}
+
+/* NÃO forçar fundos em elementos - deixar os CSS modules funcionarem */
+/* Página de login permanece isolada */
+body.login-page input,
+body.login-page select,
+body.login-page textarea {
+  background-color: initial !important;
+  color: initial !important;
+  border-color: initial !important;
+}
