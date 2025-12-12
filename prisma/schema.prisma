@@ -1,0 +1,292 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model AdminSetting {
+  id             String    @id @default(cuid())
+  companyName    String?
+  companyTaxId   String?
+  companyAddress String?
+  companyPhone   String?
+  companyLogoUrl String?
+  reportTitle    String    @default("LAUDO DE INSPEÇÃO TÉCNICA")
+  userId         String?   // null para admin, preenchido para client_a/client_b
+  user           User?     @relation(fields: [userId], references: [id])
+  updatedAt      DateTime  @updatedAt
+}
+
+model Client {
+  id              String   @id @default(cuid())
+  cnpj            String
+  name            String
+  addressStreet   String?
+  addressNumber   String?
+  addressCity     String?
+  addressState    String?
+  addressZip      String?
+  addressDistrict String?
+  phone           String?
+  userId          String?  // null para admin, preenchido para client_a/client_b
+  user            User?    @relation(fields: [userId], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  laudos          Laudo[]
+  vehicles        Vehicle[]
+  
+  @@unique([cnpj, userId]) // CNPJ único por usuário
+}
+
+model Vehicle {
+  id                  String   @id @default(cuid())
+  placa               String   @unique
+  especieTipo         String?
+  marcaModelo         String?
+  numeroChassi        String   @unique
+  anoFabricacaoModelo String?
+  
+  clientId            String
+  client              Client   @relation(fields: [clientId], references: [id])
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  laudos              Laudo[] // This relation is now added
+}
+
+model Laudo {
+  id                  String   @id @default(cuid())
+  codTemporal         String?
+  ordemServico        String   @unique
+  dataEmissao         DateTime
+
+  clientId            String
+  client              Client   @relation(fields: [clientId], references: [id])
+
+  vehicleId           String
+  vehicle             Vehicle  @relation(fields: [vehicleId], references: [id])
+
+  fabricanteEquipamento String?  @default("N.A")
+  mesAnoFabricEquip     String?  @default("N.A")
+  diametroPinoRei       String?  @default("N.A")
+  dataVerifPinoRei      String?
+
+  fotoDianteiraUrl      String?
+  fotoTraseiraUrl       String?
+  fotoChassiUrl         String?
+
+  observacoes         String?
+  laudoType           String
+  dataVencimento      String?
+
+  // Relação com laudo de ruído
+  laudoRuido          LaudoRuido?
+  
+  // Relação com laudo de pino rei
+  laudoPinoRei        LaudoPinoRei?
+  
+  // Relação com laudo de quinta roda
+  laudoQuintaRoda     LaudoQuintaRoda?
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model Equipment {
+  id               String   @id @default(cuid())
+  name             String   // "AKSO"
+  model            String   // "AK824"
+  certificateNumber String  // "AKSO AK824 107420/24"
+  calibrationDate  DateTime // 2024-07-17
+  expirationDate   DateTime // 2025-07-17
+  equipmentType    String   // "DECIBELIMETRO", "CALIBRADOR", "OUTROS"
+  isActive         Boolean  @default(true)
+  userId           String?  // null para admin, preenchido para client_a/client_b
+  user             User?    @relation(fields: [userId], references: [id])
+  
+  // Relações
+  laudosRuido      LaudoRuido[]
+  laudosPinoRei    LaudoPinoRei[]
+  laudosQuintaRoda LaudoQuintaRoda[]
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  @@unique([certificateNumber, userId]) // Certificado único por usuário
+}
+
+model LaudoRuido {
+  id                    String   @id @default(cuid())
+  laudoId               String   @unique
+  laudo                 Laudo    @relation(fields: [laudoId], references: [id])
+  
+  equipmentId           String
+  equipment             Equipment @relation(fields: [equipmentId], references: [id])
+  
+  // 6 campos de aceleração (0-120 dB)
+  aceleracao1          Decimal
+  aceleracao2          Decimal
+  aceleracao3          Decimal
+  aceleracao4          Decimal
+  aceleracao5          Decimal
+  aceleracao6          Decimal
+  
+  // 6 campos de marcha lenta (0-120 dB)
+  marchaLenta1         Decimal
+  marchaLenta2         Decimal
+  marchaLenta3         Decimal
+  marchaLenta4         Decimal
+  marchaLenta5         Decimal
+  marchaLenta6         Decimal
+  
+  // Resultados calculados
+  medianaAceleracao    Decimal?
+  maxAceleracao        Decimal?
+  medianaMarchaLenta   Decimal?
+  maxMarchaLenta       Decimal?
+  
+  // Resultado manual
+  resultado            String   // "APROVADO" | "REPROVADO"
+  
+  // Inspetor responsável
+  inspetorResponsavel  String
+  
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+// Enums para o modelo LaudoPinoRei
+enum TipoFixacaoPino {
+  SOLDA
+  FLANGEADO
+  APARAFUSADA
+}
+
+enum TipoFixacaoMesa {
+  SOLDA
+  APARAFUSADA
+}
+
+enum ResultadoInspecao {
+  APROVADO
+  REPROVADO
+}
+
+model LaudoPinoRei {
+  id                      String   @id @default(cuid())
+  
+  // Relacionamentos
+  laudoId                 String   @unique
+  laudo                   Laudo    @relation(fields: [laudoId], references: [id])
+  
+  equipmentId             String
+  equipment               Equipment @relation(fields: [equipmentId], references: [id])
+  
+  // Dados Básicos
+  dataValidadeInspecao    String   // formato DD/MM/AAAA
+  
+  // Exame Visual do Pino Rei
+  posicaoVertical         Boolean
+  presencaTrincas         Boolean
+  integridadeFixacao      Boolean
+  seloIdentificacao       Boolean
+  tipoFixacaoPino         TipoFixacaoPino
+  diametroRegistrado      Decimal
+  estadoConservacao       Boolean
+  resultadoPinoRei        ResultadoInspecao
+  
+  // Inspeção Visual da Mesa
+  tipoFixacaoMesa         TipoFixacaoMesa
+  mesaBemFixada           Boolean
+  mesaReparoSolda         Boolean
+  resultadoMesa           ResultadoInspecao
+  
+  // Ensaios Complementares
+  ensaioComplementar      Boolean
+  qualEnsaio              String?
+  
+  // Resultado Final
+  resultadoGeral          ResultadoInspecao
+  
+  // Registro Fotográfico
+  fotoChassiUrl           String?
+  fotoPinoReiUrl          String?
+  fotoMesaUrl             String?
+  
+  // Observações
+  observacoes             String?
+  normasAplicaveis        String
+  inspetorResponsavel     String
+  
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+model LaudoQuintaRoda {
+  id                      String   @id @default(cuid())
+  
+  // Relacionamentos
+  laudoId                 String   @unique
+  laudo                   Laudo    @relation(fields: [laudoId], references: [id])
+  
+  equipmentId             String
+  equipment               Equipment @relation(fields: [equipmentId], references: [id])
+  
+  // Dados Básicos
+  dataValidadeInspecao    String   // formato DD/MM/AAAA
+  
+  // Dados da Quinta Roda
+  fabricanteMarca         String
+  modelo                  String
+  numeroIdentificacao     String
+  
+  // 12 Itens de Exame Visual (Boolean SIM/NÃO)
+  seloIdentificacao       Boolean  // Apresenta Selo de Identificação da Conformidade?
+  presencaTrincas         Boolean  // Apresenta algum tipo de trinca, rachadura ou reparo?
+  integraFixada           Boolean  // Apresenta-se íntegra, devidamente fixada?
+  pinosIntegros           Boolean  // Os pinos de articulação estão íntegros?
+  mancaisOvalados         Boolean  // Os mancais apresentam-se ovalados? Há folga excessiva?
+  mecanismoTravamento     Boolean  // O mecanismo de travamento e segurança do engate está operando corretamente?
+  pinosPressos            Boolean  // Os pinos estão devidamente presos, fixados por grampos ou outra forma adequada?
+  desgastesCanais         Boolean  // Apresenta desgastes nos canais de lubrificação da quinta Roda?
+  apoiosSapatas           Boolean  // Os apoios ou sapatas apresentam trincas, folgas e/ou reparos?
+  cantoneirasFixadas      Boolean  // As cantoneiras e placas de montagem (mesa da 5ª roda) estão bem fixadas?
+  aterramentoFixado       Boolean  // Possui Aterramento e está devidamente fixado?
+  ensaioComplementar      Boolean  // Efetuado outro ensaio Complementar?
+  
+  // Resultado Final
+  resultadoFinal          ResultadoInspecao
+  
+  // Registro Fotográfico (3 fotos conforme layout)
+  fotoQuintaRoda1Url      String?  // Primeira foto do registro fotográfico
+  fotoQuintaRoda2Url      String?  // Segunda foto do registro fotográfico
+  fotoChassiUrl           String?  // Foto do chassi
+  
+  // Observações e Normas
+  observacoes             String?
+  normasAplicaveis        String
+  inspetorResponsavel     String
+  
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+model User {
+  id           String         @id @default(cuid())
+  username     String         @unique
+  password     String
+  role         String         // "admin", "client_a", "client_b"
+  isActive     Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  
+  // Relações
+  clients      Client[]
+  equipments   Equipment[]
+  adminSettings AdminSetting[]
+}
