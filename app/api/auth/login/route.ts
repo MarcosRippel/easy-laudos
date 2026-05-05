@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       where: { username, isActive: true },
     });
 
-    if (!user || !verifyPassword(password, user.password)) {
+    if (!user || !(await verifyPassword(password, user.password))) {
       return NextResponse.json(
         { error: 'Credenciais inválidas' },
         { status: 401 }

@@ -8,7 +8,7 @@ async function main() {
 
   // Senha padrão para todos os usuários (não mostrar no frontend)
   const defaultPassword = 'change-me';
-  const hashedPassword = hashPassword(defaultPassword);
+  const hashedPassword = await hashPassword(defaultPassword);
 
   // Criar usuário admin
   const admin = await prisma.user.upsert({

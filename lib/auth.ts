@@ -1,16 +1,24 @@
+import bcrypt from 'bcryptjs';
 import { createHash } from 'crypto';
 
-// Hash simples e seguro para senhas
-export function hashPassword(password: string): string {
+const BCRYPT_ROUNDS = 12;
+
+function sha256Legacy(password: string): string {
   return createHash('sha256').update(password + (process.env.AUTH_SALT || 'gts-salt')).digest('hex');
 }
 
-// Verificar senha
-export function verifyPassword(password: string, hash: string): boolean {
-  return hashPassword(password) === hash;
+export async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, BCRYPT_ROUNDS);
 }
 
-// Tipos de usuário
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  if (hash.startsWith('$2')) {
+    return bcrypt.compare(password, hash);
+  }
+  // fallback transparente: hash SHA-256 antigo
+  return sha256Legacy(password) === hash;
+}
+
 export type UserRole = 'admin' | 'client_a' | 'client_b';
 
 export interface AuthUser {
@@ -19,12 +27,10 @@ export interface AuthUser {
   role: UserRole;
 }
 
-// Verificar se é admin
 export function isAdmin(role: UserRole): boolean {
   return role === 'admin';
 }
 
-// Verificar se é usuário cliente
 export function isClientUser(role: UserRole): boolean {
   return role === 'client_a' || role === 'client_b';
 }

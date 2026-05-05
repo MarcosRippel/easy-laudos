@@ -4,9 +4,17 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import type { Client, Vehicle, Laudo } from '@prisma/client';
 import EquipmentNotifications from '@/components/equipments/EquipmentNotifications';
+import LaudosCharts, { type ChartsData } from '@/components/dashboard/LaudosCharts';
 import styles from './HomePage.module.css';
 
-type StatData = { clients: number; vehicles: number; laudos: number; };
+type StatData = {
+  clients: number;
+  vehicles: number;
+  laudos: number;
+  byType: Record<string, number>;
+  byMonth: { month: string; count: number }[];
+};
+
 type LaudoWithRelations = Laudo & { client: Client; vehicle: Vehicle; };
 
 interface FilterState {
@@ -27,11 +35,14 @@ interface PaginationInfo {
 }
 
 export default function Home() {
-  const [stats, setStats] = useState<StatData>({ clients: 0, vehicles: 0, laudos: 0 });
+  const [stats, setStats] = useState<StatData>({ clients: 0, vehicles: 0, laudos: 0, byType: {}, byMonth: [] });
   const [laudos, setLaudos] = useState<LaudoWithRelations[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingIds, setDeletingIds] = useState<string[]>([]);
+  const [generatingPdfIds, setGeneratingPdfIds] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [downloadingZip, setDownloadingZip] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState<PaginationInfo>({
     currentPage: 1,
@@ -41,7 +52,7 @@ export default function Home() {
     hasNextPage: false,
     hasPrevPage: false
   });
-  
+
   const [filters, setFilters] = useState<FilterState>({
     type: '',
     clientId: '',
@@ -66,6 +77,11 @@ export default function Home() {
   useEffect(() => {
     fetchLaudos();
   }, [filters, currentPage]);
+
+  // Limpar seleção ao mudar de página ou filtros
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [laudos]);
 
   const fetchInitialData = async () => {
     try {
@@ -114,26 +130,66 @@ export default function Home() {
   };
 
   const handleFilterChange = (field: keyof FilterState, value: string) => {
-    setFilters(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    setCurrentPage(1); // Reset para primeira página ao aplicar filtros
+    setFilters(prev => ({ ...prev, [field]: value }));
+    setCurrentPage(1);
   };
 
   const clearFilters = () => {
-    setFilters({
-      type: '',
-      clientId: '',
-      dateFrom: '',
-      dateTo: '',
-      search: ''
-    });
+    setFilters({ type: '', clientId: '', dateFrom: '', dateTo: '', search: '' });
     setCurrentPage(1);
   };
 
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === laudos.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(laudos.map(l => l.id)));
+    }
+  };
+
+  const handleDownloadZip = async () => {
+    if (selectedIds.size === 0) return;
+    setDownloadingZip(true);
+    try {
+      const payload = laudos
+        .filter(l => selectedIds.has(l.id))
+        .map(l => ({ id: l.id, type: l.laudoType, ordemServico: l.ordemServico }));
+
+      const response = await fetch('/api/laudos/zip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ laudos: payload }),
+      });
+
+      if (!response.ok) throw new Error('Erro ao gerar ZIP');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `laudos-${new Date().toISOString().slice(0, 10)}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setSelectedIds(new Set());
+    } catch {
+      alert('Erro ao gerar ZIP. Tente novamente.');
+    } finally {
+      setDownloadingZip(false);
+    }
   };
 
   const handleDeleteLaudo = async (laudoId: string, ordemServico: string) => {
@@ -142,29 +198,20 @@ export default function Home() {
     }
 
     setDeletingIds(prev => [...prev, laudoId]);
-    
+
     try {
-      const response = await fetch(`/api/laudos/${laudoId}`, {
-        method: 'DELETE'
-      });
-      
+      const response = await fetch(`/api/laudos/${laudoId}`, { method: 'DELETE' });
+
       if (response.ok) {
-        // Atualizar a lista local removendo o laudo excluído
         setLaudos(prev => prev.filter(laudo => laudo.id !== laudoId));
-        
-        // Atualizar stats
-        setStats(prev => ({
-          ...prev,
-          laudos: prev.laudos - 1
-        }));
-        
-        // Recarregar a página se ficou vazia
+        setStats(prev => ({ ...prev, laudos: prev.laudos - 1 }));
+
         if (laudos.length === 1 && currentPage > 1) {
           setCurrentPage(currentPage - 1);
         } else {
           fetchLaudos();
         }
-        
+
         alert('Laudo excluído com sucesso!');
       } else {
         const errorData = await response.json();
@@ -178,6 +225,42 @@ export default function Home() {
     }
   };
 
+  const handleDownloadPdf = async (laudoId: string, laudoType: string, ordemServico: string) => {
+    setGeneratingPdfIds(prev => [...prev, laudoId]);
+    try {
+      let response: Response;
+
+      if (laudoType === 'PINO_REI') {
+        response = await fetch(`/api/laudos/pino-rei/pdf?id=${laudoId}`);
+      } else if (laudoType === 'QUINTA_RODA') {
+        response = await fetch(`/api/laudos/quinta-roda/pdf?id=${laudoId}`);
+      } else {
+        response = await fetch('/api/laudos/pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ laudoId, type: laudoType.toLowerCase() }),
+        });
+      }
+
+      if (!response.ok) throw new Error(`Erro ${response.status}`);
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `laudo-${laudoType.toLowerCase()}-${ordemServico}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      alert(`Erro ao gerar PDF do laudo ${ordemServico}. Tente novamente.`);
+    } finally {
+      setGeneratingPdfIds(prev => prev.filter(id => id !== laudoId));
+    }
+  };
+
   if (loading) {
     return (
       <div className={styles.dashboard}>
@@ -185,6 +268,8 @@ export default function Home() {
       </div>
     );
   }
+
+  const chartsData: ChartsData = { byType: stats.byType ?? {}, byMonth: stats.byMonth ?? [] };
 
   return (
     <div className={styles.dashboard}>
@@ -194,13 +279,16 @@ export default function Home() {
       </section>
 
       {/* Stats Cards */}
-      <section>
+      <section data-tutorial="stats">
         <div className={styles.statsGrid}>
-          <StatCard label="Total Clients" value={stats.clients} />
-          <StatCard label="Total Vehicles" value={stats.vehicles} />
+          <StatCard label="Total Clientes" value={stats.clients} />
+          <StatCard label="Total Veículos" value={stats.vehicles} />
           <StatCard label="Total Laudos" value={stats.laudos} />
         </div>
       </section>
+
+      {/* Gráficos */}
+      <LaudosCharts data={chartsData} />
 
       {/* Histórico de Laudos */}
       <section className={styles.laudosSection}>
@@ -212,9 +300,8 @@ export default function Home() {
         </div>
 
         {/* Filtros */}
-        <div className={styles.filtersSection}>
+        <div data-tutorial="filters" className={styles.filtersSection}>
           <div className={styles.filtersGrid}>
-            {/* Tipo de Laudo */}
             <div className={styles.filterGroup}>
               <label className={styles.filterLabel}>Tipo de Laudo</label>
               <select
@@ -223,14 +310,11 @@ export default function Home() {
                 className={styles.filterSelect}
               >
                 {laudoTypes.map(type => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
+                  <option key={type.value} value={type.value}>{type.label}</option>
                 ))}
               </select>
             </div>
 
-            {/* Cliente */}
             <div className={styles.filterGroup}>
               <label className={styles.filterLabel}>Cliente</label>
               <select
@@ -240,14 +324,11 @@ export default function Home() {
               >
                 <option value="">Todos os clientes</option>
                 {clients.map(client => (
-                  <option key={client.id} value={client.id}>
-                    {client.name}
-                  </option>
+                  <option key={client.id} value={client.id}>{client.name}</option>
                 ))}
               </select>
             </div>
 
-            {/* Data De */}
             <div className={styles.filterGroup}>
               <label className={styles.filterLabel}>Data De</label>
               <input
@@ -258,7 +339,6 @@ export default function Home() {
               />
             </div>
 
-            {/* Data Até */}
             <div className={styles.filterGroup}>
               <label className={styles.filterLabel}>Data Até</label>
               <input
@@ -269,7 +349,6 @@ export default function Home() {
               />
             </div>
 
-            {/* Busca */}
             <div className={styles.filterGroup}>
               <label className={styles.filterLabel}>Buscar</label>
               <input
@@ -281,19 +360,14 @@ export default function Home() {
               />
             </div>
 
-            {/* Botão Limpar */}
             <div className={styles.filterGroup}>
               <label className={styles.filterLabel}>&nbsp;</label>
-              <button
-                onClick={clearFilters}
-                className={styles.clearButton}
-              >
+              <button onClick={clearFilters} className={styles.clearButton}>
                 🗑️ Limpar
               </button>
             </div>
           </div>
 
-          {/* Contador de resultados */}
           <div className={styles.resultsCount}>
             <span>
               Mostrando <strong>{laudos.length}</strong> de <strong>{pagination.totalCount}</strong> laudos
@@ -304,25 +378,50 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Barra de seleção / ZIP */}
+        {selectedIds.size > 0 && (
+          <div className={styles.zipBar}>
+            <span className={styles.zipCount}>{selectedIds.size} laudo(s) selecionado(s)</span>
+            <button
+              onClick={handleDownloadZip}
+              disabled={downloadingZip}
+              className={styles.zipButton}
+            >
+              {downloadingZip ? '⏳ Gerando ZIP...' : `📦 Baixar ${selectedIds.size} PDF(s) em ZIP`}
+            </button>
+            <button onClick={() => setSelectedIds(new Set())} className={styles.clearSelectionButton}>
+              ✕ Desmarcar
+            </button>
+          </div>
+        )}
+
         {/* Tabela */}
-        <div className={styles.tableContainer}>
+        <div data-tutorial="table" className={styles.tableContainer}>
           <table className={styles.table}>
             <thead>
               <tr>
+                <th className={styles.checkboxCol}>
+                  <input
+                    type="checkbox"
+                    checked={laudos.length > 0 && selectedIds.size === laudos.length}
+                    onChange={toggleSelectAll}
+                    title="Selecionar todos"
+                  />
+                </th>
                 <th>Ordem Serviço</th>
-                <th>Cliente</th>
+                <th className={styles.hideOnMobile}>Cliente</th>
                 <th>Veículo</th>
                 <th>Tipo</th>
                 <th>Data Emissão</th>
-                <th>Data Vencimento</th>
+                <th className={styles.hideOnMobile}>Data Vencimento</th>
                 <th>Ações</th>
               </tr>
             </thead>
             <tbody>
               {laudos.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className={styles.noData}>
-                    {pagination.totalCount === 0 
+                  <td colSpan={8} className={styles.noData}>
+                    {pagination.totalCount === 0
                       ? 'Nenhum laudo encontrado no sistema'
                       : 'Nenhum laudo encontrado com os filtros aplicados'
                     }
@@ -330,9 +429,16 @@ export default function Home() {
                 </tr>
               ) : (
                 laudos.map((laudo) => (
-                  <tr key={laudo.id}>
+                  <tr key={laudo.id} className={selectedIds.has(laudo.id) ? styles.rowSelected : ''}>
+                    <td className={styles.checkboxCol}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(laudo.id)}
+                        onChange={() => toggleSelect(laudo.id)}
+                      />
+                    </td>
                     <td className={styles.ordemServico}>{laudo.ordemServico}</td>
-                    <td>{laudo.client.name}</td>
+                    <td className={styles.hideOnMobile}>{laudo.client.name}</td>
                     <td>
                       <span className={styles.placa}>{laudo.vehicle.placa}</span>
                       <br />
@@ -344,19 +450,26 @@ export default function Home() {
                       </span>
                     </td>
                     <td>{format(new Date(laudo.dataEmissao), 'dd/MM/yyyy')}</td>
-                    <td>{laudo.dataVencimento || 'N/A'}</td>
+                    <td className={styles.hideOnMobile}>{laudo.dataVencimento || 'N/A'}</td>
                     <td>
-                      <button
-                        onClick={() => handleDeleteLaudo(laudo.id, laudo.ordemServico)}
-                        disabled={deletingIds.includes(laudo.id)}
-                        className={styles.deleteButton}
-                      >
-                        {deletingIds.includes(laudo.id) ? (
-                          <>⏳ Excluindo...</>
-                        ) : (
-                          <>🗑️ Excluir</>
-                        )}
-                      </button>
+                      <div className={styles.actionsCell}>
+                        <button
+                          data-tutorial="pdf-btn"
+                          onClick={() => handleDownloadPdf(laudo.id, laudo.laudoType, laudo.ordemServico)}
+                          disabled={generatingPdfIds.includes(laudo.id)}
+                          className={styles.pdfButton}
+                        >
+                          {generatingPdfIds.includes(laudo.id) ? '⏳' : '📄 PDF'}
+                        </button>
+                        <button
+                          data-tutorial="delete-btn"
+                          onClick={() => handleDeleteLaudo(laudo.id, laudo.ordemServico)}
+                          disabled={deletingIds.includes(laudo.id)}
+                          className={styles.deleteButton}
+                        >
+                          {deletingIds.includes(laudo.id) ? '⏳' : '🗑️'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -367,7 +480,7 @@ export default function Home() {
 
         {/* Paginação */}
         {pagination.totalPages > 1 && (
-          <div className={styles.paginationContainer}>
+          <div data-tutorial="pagination" className={styles.paginationContainer}>
             <button
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={!pagination.hasPrevPage}
@@ -375,7 +488,7 @@ export default function Home() {
             >
               ← Anterior
             </button>
-            
+
             <div className={styles.paginationInfo}>
               {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
                 let pageNum;
@@ -400,7 +513,7 @@ export default function Home() {
                 );
               })}
             </div>
-            
+
             <button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={!pagination.hasNextPage}

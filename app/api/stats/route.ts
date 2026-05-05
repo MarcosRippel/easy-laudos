@@ -1,24 +1,33 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 
 export async function GET() {
   try {
-    const [clientCount, vehicleCount, laudoCount] = await Promise.all([
+    const [clientCount, vehicleCount, laudoCount, byTypeRaw, allLaudos] = await Promise.all([
       prisma.client.count(),
       prisma.vehicle.count(),
       prisma.laudo.count(),
+      prisma.laudo.groupBy({ by: ['laudoType'], _count: { id: true } }),
+      prisma.laudo.findMany({ select: { dataEmissao: true } }),
     ]);
 
-    return NextResponse.json({
-      clients: clientCount,
-      vehicles: vehicleCount,
-      laudos: laudoCount,
+    const byType = Object.fromEntries(
+      byTypeRaw.map(({ laudoType, _count }) => [laudoType, _count.id])
+    );
+
+    const now = new Date();
+    const byMonth = Array.from({ length: 6 }, (_, i) => {
+      const d = subMonths(now, 5 - i);
+      const start = startOfMonth(d);
+      const end = endOfMonth(d);
+      const count = allLaudos.filter(l => l.dataEmissao >= start && l.dataEmissao <= end).length;
+      return { month: format(d, 'MMM/yy'), count };
     });
+
+    return NextResponse.json({ clients: clientCount, vehicles: vehicleCount, laudos: laudoCount, byType, byMonth });
   } catch (error) {
     console.error('Failed to retrieve stats:', error);
-    return new NextResponse(
-      JSON.stringify({ message: 'Could not retrieve stats' }),
-      { status: 500 }
-    );
+    return new NextResponse(JSON.stringify({ message: 'Could not retrieve stats' }), { status: 500 });
   }
 }
