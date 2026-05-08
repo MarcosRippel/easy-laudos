@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const PUBLIC_ROUTES = ['/login'];
+const PUBLIC_PREFIXES = ['/verificar/'];
 const ADMIN_ROUTES = ['/admin'];
 const SESSION_MAX_AGE = 8 * 60 * 60 * 1000;
 
@@ -40,8 +41,8 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
-  // Rotas públicas
-  if (PUBLIC_ROUTES.includes(pathname)) {
+  // Rotas públicas (login + verificação pública por hash)
+  if (PUBLIC_ROUTES.includes(pathname) || PUBLIC_PREFIXES.some(p => pathname.startsWith(p))) {
     return response;
   }
 
