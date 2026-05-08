@@ -65,10 +65,11 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body>
-        <AuthWrapper>
-          {children}
-        </AuthWrapper>
-        <PWAProvider />
+        <PWAProvider>
+          <AuthWrapper>
+            {children}
+          </AuthWrapper>
+        </PWAProvider>
       </body>
     </html>
   );

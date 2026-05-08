@@ -459,6 +459,14 @@ export default function LoginPage() {
         </div>
 
         <div className={styles.footerBottom}>
+          <span className={styles.appBadge} aria-label="Disponível como aplicativo">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <rect x="3" y="1" width="10" height="14" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+              <line x1="7" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            Disponível como app — instale após o login
+          </span>
+          <br />
           © 2026 General Inspetor · Todos os direitos reservados ·{' '}
           <a href="https://terpens.com.br/" target="_blank" rel="noopener noreferrer">
             Desenvolvido por Terpens LLC
