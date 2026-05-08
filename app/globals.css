@@ -369,28 +369,7 @@ table {
   background: rgba(42, 42, 46, 0.8) !important;
 }
 
-/* Página de login - permitir estilos próprios */
-body.login-page,
-body.login-page * {
-  background-color: initial !important;
-  color: initial !important;
-  border-color: initial !important;
-}
-
-/* Garantir que o body da página de login não tenha fundo escuro */
-body.login-page {
-  background: transparent !important;
-}
-
-/* NÃO forçar fundos em elementos - deixar os CSS modules funcionarem */
-/* Página de login permanece isolada */
-body.login-page input,
-body.login-page select,
-body.login-page textarea {
-  background-color: initial !important;
-  color: initial !important;
-  border-color: initial !important;
-}
+/* Login page styling vive em LoginPage.module.css; deixamos o CSS Module governar. */
 
 /* ========== MOBILE OPTIMIZATIONS ========== */
 @media (max-width: 768px) {

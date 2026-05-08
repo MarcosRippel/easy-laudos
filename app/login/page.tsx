@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './LoginPage.module.css';
 
-const LOGO_SIMPLES = '/branding/logo-bonito-simples.png';
+const LOGO_SIMPLES = '/branding/logo-bonito-simples-transparent.png';
 const LOGO_BONITO = '/branding/logo-bonito.png';
 
 export default function LoginPage() {
