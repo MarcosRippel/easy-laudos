@@ -18,12 +18,13 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/branding/favicon.png?v=2", type: "image/png", sizes: "32x32" },
-      { url: "/branding/logo-bonito-simples.png?v=2", type: "image/png", sizes: "512x512" },
+      { url: "/branding/favicon.svg?v=3", type: "image/svg+xml" },
+      { url: "/branding/favicon.png?v=3", type: "image/png", sizes: "32x32" },
+      { url: "/branding/logo-bonito-simples-transparent.png?v=3", type: "image/png", sizes: "512x512" },
     ],
-    shortcut: [{ url: "/branding/favicon.png?v=2", type: "image/png" }],
+    shortcut: [{ url: "/branding/favicon.svg?v=3", type: "image/svg+xml" }],
     apple: [
-      { url: "/branding/favicon.png?v=2", sizes: "180x180", type: "image/png" },
+      { url: "/branding/favicon.png?v=3", sizes: "180x180", type: "image/png" },
     ],
   },
   openGraph: {
