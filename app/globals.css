@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 :root {
-  --background: #1a1a1a;
-  --foreground: #ededed;
-  
+  --background: #0b0b0d;
+  --foreground: #ececec;
+
   /* Variáveis de cor para página de login */
   --primary: #047857;
   --secondary: #10b981;
@@ -12,6 +12,19 @@
   --text-dark: #1f2937;
   --gradient-primary: linear-gradient(135deg, #047857 0%, #10b981 100%);
   --gradient-overlay: linear-gradient(135deg, rgba(4, 120, 87, 0.95), rgba(16, 185, 129, 0.85));
+
+  /* Tokens da landing page premium */
+  --lp-bg: #0b0b0d;
+  --lp-bg-elev: #111114;
+  --lp-bg-card: rgba(255, 255, 255, 0.025);
+  --lp-border: rgba(255, 255, 255, 0.08);
+  --lp-border-strong: rgba(255, 255, 255, 0.14);
+  --lp-text: #ececec;
+  --lp-text-muted: rgba(236, 236, 236, 0.62);
+  --lp-text-faint: rgba(236, 236, 236, 0.42);
+  --lp-accent: #8aa498;
+  --lp-accent-soft: rgba(138, 164, 152, 0.16);
+  --lp-accent-strong: #b6c9bf;
 }
 
 @theme inline {
@@ -147,12 +160,12 @@ body::after {
 
 /* Padrão de ondas sinuosas */
 body {
-  background-image: 
+  background-image:
     radial-gradient(circle at 25% 25%, rgba(0, 123, 255, 0.05) 0%, transparent 70%),
     radial-gradient(circle at 75% 75%, rgba(23, 162, 184, 0.03) 0%, transparent 70%),
-    linear-gradient(45deg, 
-      transparent 40%, 
-      rgba(255, 255, 255, 0.02) 50%, 
+    linear-gradient(45deg,
+      transparent 40%,
+      rgba(255, 255, 255, 0.02) 50%,
       transparent 60%
     ),
     repeating-linear-gradient(
@@ -162,6 +175,39 @@ body {
       transparent 2px,
       transparent 40px
     );
+}
+
+/* Página de login: tema premium minimalista — desliga todos os efeitos globais */
+body.login-page,
+body.login-page html {
+  background: var(--lp-bg) !important;
+  background-image: none !important;
+  animation: none !important;
+}
+body.login-page::before,
+body.login-page::after {
+  display: none !important;
+}
+
+/* Reveal on scroll — discreto */
+body.login-page [data-reveal] {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+body.login-page [data-reveal].reveal-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  body.login-page [data-reveal],
+  body.login-page [data-reveal].reveal-in {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
 }
 
 /* Animações */
@@ -344,4 +390,61 @@ body.login-page textarea {
   background-color: initial !important;
   color: initial !important;
   border-color: initial !important;
+}
+
+/* ========== MOBILE OPTIMIZATIONS ========== */
+@media (max-width: 768px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    overflow-x: hidden !important;
+  }
+
+  /* Disable expensive background animations on mobile for performance */
+  body::after {
+    display: none !important;
+  }
+
+  body::before {
+    opacity: 0.5;
+  }
+
+  body {
+    animation: none !important;
+    background-size: 100% 100% !important;
+  }
+
+  /* Thinner scrollbar on mobile */
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  /* Prevent horizontal overflow on mobile */
+  main {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  /* Force all containers to respect viewport width */
+  *, *::before, *::after {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Exceptions for elements that need to overflow */
+  img, video, canvas, svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Fix inputs/selects that might overflow */
+  input, select, textarea {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
 }

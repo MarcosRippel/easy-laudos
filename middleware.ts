@@ -4,6 +4,22 @@ const PUBLIC_ROUTES = ['/login'];
 const ADMIN_ROUTES = ['/admin'];
 const SESSION_MAX_AGE = 8 * 60 * 60 * 1000;
 
+function resolveBaseUrl(request: NextRequest): URL {
+  const forwardedHost = request.headers.get('x-forwarded-host');
+  const forwardedProto = request.headers.get('x-forwarded-proto');
+  const host = forwardedHost ?? request.headers.get('host');
+  const proto = forwardedProto ?? request.nextUrl.protocol.replace(':', '');
+  if (host) {
+    return new URL(`${proto}://${host}`);
+  }
+  return new URL(request.url);
+}
+
+function redirectTo(request: NextRequest, path: string) {
+  const base = resolveBaseUrl(request);
+  return NextResponse.redirect(new URL(path, base));
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -32,25 +48,25 @@ export function middleware(request: NextRequest) {
   // Verificar sessão
   const sessionCookie = request.cookies.get('gts_session');
   if (!sessionCookie) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    return redirectTo(request, '/login');
   }
 
   try {
     const session = JSON.parse(sessionCookie.value);
 
     if (Date.now() - session.loginTime > SESSION_MAX_AGE) {
-      const redirect = NextResponse.redirect(new URL('/login', request.url));
+      const redirect = redirectTo(request, '/login');
       redirect.cookies.delete('gts_session');
       return redirect;
     }
 
     if (ADMIN_ROUTES.some(p => pathname.startsWith(p)) && session.role !== 'admin') {
-      return NextResponse.redirect(new URL('/', request.url));
+      return redirectTo(request, '/');
     }
 
     return response;
   } catch {
-    return NextResponse.redirect(new URL('/login', request.url));
+    return redirectTo(request, '/login');
   }
 }
 

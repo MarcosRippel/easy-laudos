@@ -10,7 +10,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showRegister, setShowRegister] = useState(false);
-  const [showLogin, setShowLogin] = useState(false);
   const [registerData, setRegisterData] = useState({
     nomeEmpresa: '',
     cnpj: '',
@@ -28,8 +27,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     document.body.classList.add('login-page');
-    
-    // Scroll to top handler
+
     const handleScroll = () => {
       const scrollBtn = document.getElementById('scrollToTop');
       if (scrollBtn) {
@@ -42,12 +40,26 @@ export default function LoginPage() {
         }
       }
     };
-
     window.addEventListener('scroll', handleScroll);
-    
+
+    const reveals = document.querySelectorAll<HTMLElement>('[data-reveal]');
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('reveal-in');
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.12, rootMargin: '0px 0px -60px 0px' }
+    );
+    reveals.forEach((el) => observer.observe(el));
+
     return () => {
       document.body.classList.remove('login-page');
       window.removeEventListener('scroll', handleScroll);
+      observer.disconnect();
     };
   }, []);
 
@@ -129,17 +141,34 @@ export default function LoginPage() {
   };
 
   const scrollToLogin = () => {
-    setShowLogin(true);
+    const el = document.getElementById('loginSection');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   };
 
   return (
     <div className={styles.landingPage}>
+      {/* Vinheta + orbs ambientes */}
+      <div className={styles.animatedGradient} aria-hidden="true" />
+      <div className={styles.ambientOrbs} aria-hidden="true">
+        <span className={styles.orb} />
+        <span className={styles.orb} />
+      </div>
+
       {/* Header */}
       <header className={styles.header}>
         <div className={styles.headerContent}>
-          <div className={styles.headerPlaceholder}></div>
+          <div className={styles.headerLogo}>
+            <img
+              src="/logo-bonito-simples.png"
+              alt="General Inspetor"
+              className={styles.logoImage}
+            />
+            <span className={styles.logoLabel}>General Inspetor</span>
+          </div>
           <div className={styles.headerActions}>
-            <button className={styles.btnLoginHeader} onClick={() => setShowLogin(true)}>
+            <button className={styles.btnLoginHeader} onClick={scrollToLogin}>
               Acessar
             </button>
             <button className={styles.btnSignupHeader} onClick={() => setShowRegister(true)}>
@@ -149,46 +178,21 @@ export default function LoginPage() {
         </div>
       </header>
 
-      {/* Logo Luxuoso Flutuante */}
-      <div className={styles.floatingLogoContainer}>
-        <div className={styles.logoWrapper}>
-          {/* Anel Rotativo Externo */}
-          <div className={styles.logoRing}></div>
-          {/* Anel Secundário */}
-          <div className={styles.logoRingSecondary}></div>
-          
-          {/* Círculo Principal com Logo */}
-          <div className={styles.logoCircle}>
-            <img 
-              src="/para app em geral.jpg"
-              alt="General Emissor de Laudos"
-              className={styles.logoImage}
-            />
-            {/* Partículas de Brilho */}
-            <span className={styles.sparkle}></span>
-            <span className={styles.sparkle}></span>
-            <span className={styles.sparkle}></span>
-            <span className={styles.sparkle}></span>
-          </div>
-        </div>
-        
-        {/* Texto Abaixo do Logo */}
-        <div className={styles.logoTextContainer}>
-          <div className={styles.logoTitle}>General Emissor de Laudos</div>
-          <div className={styles.logoSubtitle}>Sistema de Gestão</div>
-        </div>
-      </div>
-
       {/* Hero Section */}
       <section className={styles.hero} id="home">
         <div className={styles.heroContent}>
           <div className={styles.heroText}>
-            <h1 className={styles.heroTitle}>Gestão Completa de Laudos Técnicos</h1>
-            <p className={styles.heroSubtitle}>
-              Sistema profissional para inspetores e empresas que precisam emitir laudos técnicos, 
-              certificações e manter conformidade com SASSMAQ, ISO e regulamentações vigentes.
+            <span className={`${styles.heroEyebrow} ${styles.fadeUp}`} style={{ animationDelay: '0.05s' }}>
+              General Inspetor · Laudos Técnicos
+            </span>
+            <h1 className={`${styles.heroTitle} ${styles.fadeUp}`} style={{ animationDelay: '0.15s' }}>
+              Inspeções confiáveis, <span className={styles.heroAccent}>laudos sem atrito</span>.
+            </h1>
+            <p className={`${styles.heroSubtitle} ${styles.fadeUp}`} style={{ animationDelay: '0.3s' }}>
+              Plataforma profissional para emissão de laudos técnicos, controle de equipamentos
+              e conformidade com SASSMAQ, ISO e regulamentações vigentes.
             </p>
-            <div className={styles.heroFeatures}>
+            <div className={`${styles.heroFeatures} ${styles.fadeUp}`} style={{ animationDelay: '0.45s' }}>
               <div className={styles.heroFeatureItem}>
                 <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                 <span>Emissão de Laudos</span>
@@ -208,13 +212,20 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className={styles.loginCard}>
+          <div className={`${styles.loginCard} ${styles.fadeUp}`} id="loginSection" style={{ animationDelay: '0.5s' }}>
+            <div className={styles.refinedLogoContainer}>
+              <img
+                src="/logo-bonito-simples.png"
+                alt="General Inspetor"
+                className={styles.refinedLogoImage}
+              />
+            </div>
             <div className={styles.loginTitle}>
-              <h2>Acesso ao Sistema</h2>
+              <h2>Acesse a sua conta</h2>
               <p>Entre com suas credenciais</p>
             </div>
 
-            {error && showLogin && (
+            {error && !showRegister && (
               <div className={styles.alertError}>
                 {error}
               </div>
@@ -256,7 +267,7 @@ export default function LoginPage() {
       </section>
 
       {/* Seção para quem serve */}
-      <section className={styles.benefitsSection}>
+      <section className={styles.benefitsSection} data-reveal>
         <div className={styles.sectionTitle}>
           <h2>Nossa solução é perfeita para</h2>
           <p>Profissionais e empresas que precisam de gestão técnica especializada</p>
@@ -296,7 +307,7 @@ export default function LoginPage() {
       </section>
 
       {/* Seção de Integração TMS */}
-      <section className={styles.imageSection}>
+      <section className={styles.imageSection} data-reveal>
         <div className={styles.imageContent}>
           <div className={styles.textContent}>
             <h2>Integração exclusiva com GENERAL TMS</h2>
@@ -313,13 +324,30 @@ export default function LoginPage() {
             </ul>
           </div>
           <div className={styles.imageBox}>
-            <div className={styles.integrationBadge}>Integração Disponível</div>
+            <div className={styles.integrationBadge}>
+              <img
+                src="/logo-bonito.png"
+                alt="General TMS"
+                className={styles.integrationLogo}
+              />
+              <p className={styles.integrationText}>
+                Se você é um transportador, acesse o{' '}
+                <a
+                  href="https://generaltms.terpens.com.br"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.integrationLink}
+                >
+                  General TMS – Truck Management System
+                </a>
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Fluxogramas */}
-      <section className={styles.flowchartSection}>
+      <section className={styles.flowchartSection} data-reveal>
         <div className={styles.flowchartContainer}>
           <div className={styles.sectionTitle} style={{color: 'white'}}>
             <h2>Como Funciona o Sistema</h2>
@@ -389,12 +417,12 @@ export default function LoginPage() {
       </section>
 
       {/* CTA Section */}
-      <section className={styles.ctaSection}>
+      <section className={styles.ctaSection} data-reveal>
         <div className={styles.ctaContent}>
           <h2>Transforme a gestão de laudos da sua empresa</h2>
           <p>Comece hoje mesmo a usar o sistema mais completo de gestão de laudos técnicos e certificações</p>
           <div className={styles.ctaButtons}>
-            <button className={styles.btnCtaPrimary} onClick={() => setShowLogin(true)}>
+            <button className={styles.btnCtaPrimary} onClick={scrollToLogin}>
               Acessar Sistema
             </button>
             <button className={styles.btnCtaSecondary} onClick={() => setShowRegister(true)}>
