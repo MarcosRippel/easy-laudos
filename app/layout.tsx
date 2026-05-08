@@ -5,44 +5,45 @@ import AuthWrapper from "../components/auth/AuthWrapper";
 import PWAProvider from "../components/PWAProvider";
 
 export const metadata: Metadata = {
-  title: "GTS - General Truck System Inspetor",
-  description: "Sistema de Emissão de Laudos - General Truck System Inspetor",
-  keywords: ["laudos", "inspeção", "veículos", "General Truck System", "inspetor"],
+  title: "General Inspetor",
+  description: "General Inspetor — Plataforma profissional de laudos técnicos.",
+  keywords: ["laudos", "inspeção", "veículos", "General Truck System", "inspetor", "SASSMAQ"],
   authors: [{ name: "General Truck System" }],
-  applicationName: "GTS Inspetor",
+  applicationName: "General Inspetor",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "GTS Inspetor",
+    title: "General Inspetor",
   },
   icons: {
     icon: [
-      { url: "/branding/favicon.png", type: "image/png", sizes: "any" },
-      { url: "/branding/logo-bonito-simples.png", type: "image/png", sizes: "512x512" },
+      { url: "/branding/favicon.png?v=2", type: "image/png", sizes: "32x32" },
+      { url: "/branding/logo-bonito-simples.png?v=2", type: "image/png", sizes: "512x512" },
     ],
+    shortcut: [{ url: "/branding/favicon.png?v=2", type: "image/png" }],
     apple: [
-      { url: "/branding/favicon.png", sizes: "180x180", type: "image/png" },
+      { url: "/branding/favicon.png?v=2", sizes: "180x180", type: "image/png" },
     ],
   },
   openGraph: {
     type: "website",
-    title: "GTS - General Truck System Inspetor",
-    description: "Sistema de Emissão de Laudos - General Truck System Inspetor",
-    siteName: "General Truck System Inspetor",
+    title: "General Inspetor",
+    description: "Plataforma profissional de laudos técnicos com conformidade SASSMAQ e ISO.",
+    siteName: "General Inspetor",
     images: [
       {
         url: "/branding/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "General Truck System Inspetor",
+        alt: "General Inspetor",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "GTS - General Truck System Inspetor",
-    description: "Sistema de Emissão de Laudos - General Truck System Inspetor",
+    title: "General Inspetor",
+    description: "Plataforma profissional de laudos técnicos.",
     images: ["/branding/og-image.jpg"],
   },
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "https://generalinspetor.terpens.com.br"),

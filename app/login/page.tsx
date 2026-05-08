@@ -179,6 +179,11 @@ export default function LoginPage() {
 
             <div className={`${styles.heroMark} ${styles.fadeUp}`} style={{ animationDelay: '0.1s' }}>
               <div className={styles.heroMarkGlow} aria-hidden="true" />
+              <div className={styles.heroMarkRing} aria-hidden="true" />
+              <div className={styles.heroMarkRingInner} aria-hidden="true" />
+              <div className={styles.heroMarkCorners} aria-hidden="true">
+                <span /><span />
+              </div>
               <img src={LOGO_SIMPLES} alt="General Inspetor" className={styles.heroMarkImage} />
             </div>
 
