@@ -127,21 +127,23 @@
 .logoLabel {
   display: flex;
   flex-direction: column;
-  line-height: 1.05;
+  gap: 3px;
 }
 
 .logoLabelTop {
   color: var(--lp-text);
   font-weight: 600;
-  font-size: 13px;
-  letter-spacing: 0.02em;
+  font-size: 13.5px;
+  line-height: 1.1;
+  letter-spacing: 0.005em;
 }
 
 .logoLabelBot {
   color: var(--lp-text-faint);
   font-weight: 400;
-  font-size: 10.5px;
-  letter-spacing: 0.16em;
+  font-size: 9.5px;
+  line-height: 1;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
 }
 
