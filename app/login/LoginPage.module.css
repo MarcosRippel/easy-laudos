@@ -1,4 +1,4 @@
-﻿/* Tokens vivem em globals.css como --lp-* */
+/* Tokens em globals.css como --lp-* */
 
 /* ==================== BASE ==================== */
 .landingPage {
@@ -13,19 +13,18 @@
   overflow-x: hidden;
 }
 
-/* Sutil grÃ£o / vinheta atrÃ¡s de tudo, fixo */
+/* ==================== AMBIENTE (orbs + grain) ==================== */
 .animatedGradient {
   position: fixed;
   inset: 0;
   z-index: 0;
   background:
-    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(138, 164, 152, 0.06), transparent 70%),
-    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(255, 255, 255, 0.02), transparent 70%),
+    radial-gradient(ellipse 70% 50% at 30% 0%, rgba(138, 164, 152, 0.08), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(255, 255, 255, 0.025), transparent 70%),
     var(--lp-bg);
   pointer-events: none;
 }
 
-/* Orbs ambientes - luminescencia sutil e lenta */
 .ambientOrbs {
   position: fixed;
   inset: 0;
@@ -36,74 +35,33 @@
 
 .orb {
   position: absolute;
-  width: 540px;
-  height: 540px;
+  width: 620px;
+  height: 620px;
   border-radius: 50%;
-  filter: blur(110px);
-  opacity: 0.25;
+  filter: blur(120px);
+  opacity: 0.22;
   will-change: transform;
 }
 
 .orb:nth-child(1) {
-  background: radial-gradient(circle, rgba(138, 164, 152, 0.55), transparent 70%);
-  top: -180px;
-  left: -120px;
-  animation: orbDrift 26s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(138, 164, 152, 0.6), transparent 70%);
+  top: -200px;
+  left: -150px;
+  animation: orbDrift 28s ease-in-out infinite;
 }
 
 .orb:nth-child(2) {
   background: radial-gradient(circle, rgba(180, 200, 190, 0.32), transparent 70%);
-  bottom: -200px;
-  right: -160px;
-  animation: orbDrift 32s ease-in-out infinite reverse;
+  bottom: -240px;
+  right: -180px;
+  animation: orbDrift 34s ease-in-out infinite reverse;
   animation-delay: -8s;
 }
 
 @keyframes orbDrift {
   0%, 100% { transform: translate(0, 0) scale(1); }
-  33%      { transform: translate(60px, 40px) scale(1.08); }
-  66%      { transform: translate(-40px, 70px) scale(0.95); }
-}
-
-/* Stagger fade-up de entrada */
-.fadeUp {
-  opacity: 0;
-  transform: translateY(20px);
-  animation: fadeUp 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-@keyframes fadeUp {
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* Eyebrow + acento italico do hero */
-.heroEyebrow {
-  display: inline-block;
-  font-size: 11.5px;
-  font-weight: 500;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--lp-text-faint);
-  margin-bottom: 22px;
-  padding-bottom: 6px;
-  position: relative;
-}
-
-.heroEyebrow::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 28px;
-  height: 1px;
-  background: var(--lp-accent);
-  opacity: 0.7;
-}
-
-.heroAccent {
-  color: var(--lp-text-muted);
-  font-style: italic;
-  font-weight: 400;
+  33%      { transform: translate(60px, 40px) scale(1.06); }
+  66%      { transform: translate(-40px, 70px) scale(0.96); }
 }
 
 /* ==================== HEADER ==================== */
@@ -113,15 +71,15 @@
   left: 0;
   right: 0;
   z-index: 1000;
-  background: rgba(11, 11, 13, 0.72);
-  -webkit-backdrop-filter: blur(14px) saturate(120%);
-  backdrop-filter: blur(14px) saturate(120%);
+  background: rgba(11, 11, 13, 0.7);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  backdrop-filter: blur(16px) saturate(120%);
   border-bottom: 1px solid var(--lp-border);
   padding: 0.85rem 0;
 }
 
 .headerContent {
-  max-width: 1200px;
+  max-width: 1280px;
   margin: 0 auto;
   padding: 0 32px;
   display: flex;
@@ -132,26 +90,41 @@
 .headerLogo {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  cursor: pointer;
 }
 
 .logoImage {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   object-fit: contain;
-  filter: invert(1) brightness(1.05);
-  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  filter: invert(1) brightness(1.1);
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .headerLogo:hover .logoImage {
-  transform: rotate(-4deg) scale(1.05);
+  transform: rotate(-5deg) scale(1.06);
 }
 
 .logoLabel {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+}
+
+.logoLabelTop {
   color: var(--lp-text);
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
   letter-spacing: 0.02em;
+}
+
+.logoLabelBot {
+  color: var(--lp-text-faint);
+  font-weight: 400;
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
 .headerActions {
@@ -165,7 +138,7 @@
   padding: 9px 20px;
   border-radius: 8px;
   font-weight: 500;
-  font-size: 13.5px;
+  font-size: 13px;
   letter-spacing: 0.01em;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -192,89 +165,165 @@
   border-color: var(--lp-text);
 }
 
-.btnSignupHeader:hover {
-  background: white;
-  border-color: white;
-}
+.btnSignupHeader:hover { background: white; border-color: white; }
 
-/* ==================== HERO ==================== */
+/* ==================== HERO SPLIT (editorial + console) ==================== */
 .hero {
   position: relative;
   min-height: 100vh;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 130px 32px 80px;
+  align-items: stretch;
+  padding: 110px 0 0;
   z-index: 10;
 }
-
-.heroBgLogo { display: none; }
 
 .heroContent {
   position: relative;
   z-index: 10;
-  max-width: 1100px;
   width: 100%;
+  max-width: 1280px;
   margin: 0 auto;
+  padding: 0 32px;
   display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
-  gap: 80px;
+  grid-template-columns: 1.15fr 1fr;
   align-items: center;
+  gap: 60px;
 }
 
-.heroText {
-  color: var(--lp-text);
+/* Lado esquerdo — brand editorial */
+.heroBrand {
+  position: relative;
+  padding: 60px 40px 60px 0;
+  border-right: 1px solid var(--lp-border);
+}
+
+.heroEyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--lp-text-faint);
+  margin-bottom: 36px;
+}
+
+.heroEyebrow::before {
+  content: '';
+  width: 24px;
+  height: 1px;
+  background: var(--lp-accent);
+}
+
+.heroMark {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  margin-bottom: 40px;
+}
+
+.heroMarkImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: invert(1) brightness(1.05);
+  position: relative;
+  z-index: 2;
+  animation: markReveal 1.6s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+             logoFloat 7s ease-in-out 1.6s infinite;
+  opacity: 0;
+  clip-path: inset(0 100% 0 0);
+}
+
+@keyframes markReveal {
+  to { opacity: 1; clip-path: inset(0 0 0 0); }
+}
+
+@keyframes logoFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+
+.heroMarkGlow {
+  position: absolute;
+  inset: -30px;
+  background: radial-gradient(circle, rgba(138, 164, 152, 0.18), transparent 65%);
+  filter: blur(30px);
+  z-index: 1;
+  animation: pulseGlow 5s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50%      { opacity: 0.95; transform: scale(1.1); }
 }
 
 .heroTitle {
-  font-size: 56px;
+  font-size: 60px;
   font-weight: 500;
-  line-height: 1.05;
-  margin-bottom: 22px;
+  line-height: 1.04;
+  margin-bottom: 24px;
   color: var(--lp-text);
-  letter-spacing: -0.025em;
+  letter-spacing: -0.03em;
+  max-width: 540px;
+}
+
+.heroAccent {
+  color: var(--lp-text-muted);
+  font-style: italic;
+  font-weight: 400;
 }
 
 .heroSubtitle {
   font-size: 16px;
-  line-height: 1.6;
+  line-height: 1.65;
   color: var(--lp-text-muted);
   font-weight: 400;
-  max-width: 460px;
+  max-width: 440px;
   margin-bottom: 36px;
-  letter-spacing: 0.005em;
 }
 
-.heroFeatures {
+.heroMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--lp-border);
+}
+
+.heroMetaItem {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  max-width: 380px;
+  gap: 4px;
 }
 
-.heroFeatureItem {
+.heroMetaLabel {
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lp-text-faint);
+  font-weight: 500;
+}
+
+.heroMetaValue {
+  font-size: 14px;
+  color: var(--lp-text);
+  font-weight: 500;
+}
+
+/* Lado direito — console de login */
+.heroConsole {
+  padding: 60px 0 60px 40px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 14px;
-  color: var(--lp-text-muted);
-  padding: 0;
-  background: transparent;
-  border: none;
-  border-radius: 0;
+  justify-content: center;
 }
 
-.heroFeatureItem svg {
-  width: 14px;
-  height: 14px;
-  fill: var(--lp-accent);
-  flex-shrink: 0;
-  opacity: 0.85;
-}
-
-/* ==================== LOGIN CARD ==================== */
 .loginCard {
-  background: var(--lp-bg-card);
+  width: 100%;
+  max-width: 420px;
+  background: rgba(255, 255, 255, 0.025);
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border-radius: 16px;
@@ -283,66 +332,45 @@
   position: relative;
 }
 
-.loginCard::before { display: none; }
-
-.refinedLogoContainer {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 28px;
-  position: relative;
+.loginCardLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--lp-text-faint);
+  margin-bottom: 18px;
 }
 
-.refinedLogoContainer::before {
+.loginCardLabel::before {
   content: '';
-  position: absolute;
-  width: 110px;
-  height: 110px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(138, 164, 152, 0.18), transparent 70%);
-  filter: blur(20px);
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 0;
-  animation: pulseGlow 4.5s ease-in-out infinite;
+  background: var(--lp-accent);
+  box-shadow: 0 0 0 3px rgba(138, 164, 152, 0.18);
+  animation: pulseDot 2.4s ease-in-out infinite;
 }
 
-@keyframes pulseGlow {
-  0%, 100% { opacity: 0.45; transform: translate(-50%, -50%) scale(1); }
-  50%      { opacity: 0.85; transform: translate(-50%, -50%) scale(1.12); }
-}
-
-.refinedLogoImage {
-  width: 64px;
-  height: 64px;
-  object-fit: contain;
-  filter: invert(1) brightness(1.05);
-  position: relative;
-  z-index: 1;
-  animation: logoFloat 6s ease-in-out infinite;
-}
-
-@keyframes logoFloat {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-4px); }
-}
-
-.loginTitle {
-  text-align: center;
-  margin-bottom: 28px;
+@keyframes pulseDot {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(138, 164, 152, 0.18); }
+  50%      { box-shadow: 0 0 0 6px rgba(138, 164, 152, 0.05); }
 }
 
 .loginTitle h2 {
   color: var(--lp-text);
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 500;
-  margin-bottom: 6px;
-  letter-spacing: -0.01em;
+  margin-bottom: 8px;
+  letter-spacing: -0.015em;
 }
 
 .loginTitle p {
   color: var(--lp-text-faint);
   font-size: 13.5px;
+  margin-bottom: 28px;
 }
 
 .form {
@@ -350,17 +378,15 @@
   flex-direction: column;
 }
 
-.formGroup {
-  margin-bottom: 18px;
-}
+.formGroup { margin-bottom: 16px; }
 
 .formGroup label {
   display: block;
   margin-bottom: 7px;
   color: var(--lp-text-muted);
   font-weight: 500;
-  font-size: 12.5px;
-  letter-spacing: 0.02em;
+  font-size: 11.5px;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
@@ -378,9 +404,7 @@
 }
 
 .formGroup input::placeholder,
-.textarea::placeholder {
-  color: var(--lp-text-faint);
-}
+.textarea::placeholder { color: var(--lp-text-faint); }
 
 .formGroup input:focus,
 .textarea:focus {
@@ -390,10 +414,7 @@
 }
 
 .formGroup input:disabled,
-.textarea:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
+.textarea:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .btnLogin {
   width: 100%;
@@ -402,13 +423,17 @@
   color: var(--lp-bg);
   border: 1px solid var(--lp-text);
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
   letter-spacing: 0.01em;
   cursor: pointer;
   transition: all 0.2s ease;
   font-family: inherit;
   margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
 }
 
 .btnLogin:hover:not(:disabled) {
@@ -416,8 +441,11 @@
   border-color: white;
 }
 
-.btnLogin:active { transform: translateY(1px); }
+.btnLogin:hover:not(:disabled) .btnArrow { transform: translateX(3px); }
 
+.btnArrow { transition: transform 0.25s ease; }
+
+.btnLogin:active { transform: translateY(1px); }
 .btnLogin:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .alertError {
@@ -430,92 +458,178 @@
   border: 1px solid rgba(239, 68, 68, 0.18);
 }
 
-/* ==================== BENEFÃCIOS ==================== */
-.benefitsSection {
-  padding: 120px 32px;
-  background: transparent;
+.cardFootnote {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--lp-border);
+  font-size: 12.5px;
+  color: var(--lp-text-faint);
+  text-align: center;
+}
+
+.cardFootnote button {
+  background: none;
+  border: none;
+  color: var(--lp-text-muted);
+  font-size: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  border-bottom: 1px solid transparent;
+  transition: color 0.2s ease, border-color 0.2s ease;
+  font-family: inherit;
+}
+
+.cardFootnote button:hover {
+  color: var(--lp-text);
+  border-bottom-color: var(--lp-border-strong);
+}
+
+/* ==================== PILLARS NUMERADOS ==================== */
+.pillarsSection {
+  padding: 140px 32px 120px;
   position: relative;
   z-index: 10;
   border-top: 1px solid var(--lp-border);
 }
 
-.sectionTitle {
-  text-align: center;
-  margin-bottom: 64px;
-  max-width: 640px;
-  margin-left: auto;
-  margin-right: auto;
+.pillarsHead {
+  max-width: 1280px;
+  margin: 0 auto 80px;
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 60px;
+  align-items: end;
 }
 
-.sectionTitle h2 {
-  font-size: 34px;
-  font-weight: 500;
-  color: var(--lp-text);
+.pillarsKicker {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--lp-text-faint);
   margin-bottom: 14px;
-  letter-spacing: -0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.sectionTitle p {
-  font-size: 16px;
+.pillarsKicker::before {
+  content: '';
+  width: 24px;
+  height: 1px;
+  background: var(--lp-accent);
+}
+
+.pillarsHead h2 {
+  font-size: 38px;
+  font-weight: 500;
+  line-height: 1.1;
+  color: var(--lp-text);
+  letter-spacing: -0.025em;
+  max-width: 460px;
+}
+
+.pillarsHead p {
   color: var(--lp-text-muted);
-  line-height: 1.6;
+  font-size: 16px;
+  line-height: 1.7;
+  max-width: 520px;
 }
 
-.benefitsGrid {
-  max-width: 1100px;
+.pillars {
+  max-width: 1280px;
   margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1px;
-  background: var(--lp-border);
-  border: 1px solid var(--lp-border);
-  border-radius: 12px;
-  overflow: hidden;
+  gap: 0;
+  border-top: 1px solid var(--lp-border);
 }
 
-.benefitCard {
-  background: var(--lp-bg);
-  padding: 36px 28px;
-  text-align: left;
-  transition: background 0.25s ease;
+.pillar {
+  padding: 48px 36px 48px 0;
+  border-right: 1px solid var(--lp-border);
+  position: relative;
 }
 
-.benefitCard:hover {
-  background: rgba(255, 255, 255, 0.02);
+.pillar:last-child {
+  border-right: none;
+  padding-right: 0;
 }
 
-.benefitIcon {
-  font-size: 22px;
-  margin-bottom: 20px;
-  display: block;
-  filter: grayscale(0.6) opacity(0.8);
+.pillar:not(:first-child) {
+  padding-left: 36px;
 }
 
-.benefitCard h3 {
-  font-size: 15px;
-  font-weight: 600;
+.pillarNumber {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  color: var(--lp-text-faint);
+  margin-bottom: 26px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pillar h3 {
+  font-size: 19px;
+  font-weight: 500;
   color: var(--lp-text);
-  margin-bottom: 10px;
-  letter-spacing: -0.005em;
+  margin-bottom: 14px;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
 }
 
-.benefitCard p {
-  font-size: 13.5px;
-  line-height: 1.6;
+.pillar p {
+  font-size: 14px;
+  line-height: 1.7;
   color: var(--lp-text-muted);
 }
 
-/* ==================== INTEGRAÃ‡ÃƒO TMS ==================== */
-.imageSection {
-  padding: 120px 32px;
-  background: transparent;
+/* ==================== MANIFESTO (quote-like) ==================== */
+.manifestoSection {
+  padding: 140px 32px;
+  position: relative;
+  z-index: 10;
+  border-top: 1px solid var(--lp-border);
+  text-align: center;
+}
+
+.manifesto {
+  max-width: 880px;
+  margin: 0 auto;
+}
+
+.manifestoMark {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--lp-text-faint);
+  margin-bottom: 28px;
+}
+
+.manifesto p {
+  font-size: 32px;
+  line-height: 1.3;
+  color: var(--lp-text);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+}
+
+.manifesto p em {
+  color: var(--lp-text-muted);
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* ==================== INTEGRAÇÃO TMS ==================== */
+.integrationSection {
+  padding: 140px 32px;
   position: relative;
   z-index: 10;
   border-top: 1px solid var(--lp-border);
 }
 
-.imageContent {
-  max-width: 1100px;
+.integrationContent {
+  max-width: 1280px;
   margin: 0 auto;
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -523,40 +637,41 @@
   align-items: center;
 }
 
-.textContent h2 {
-  font-size: 34px;
+.integrationText h2 {
+  font-size: 32px;
   font-weight: 500;
   margin-bottom: 18px;
   color: var(--lp-text);
   letter-spacing: -0.02em;
+  line-height: 1.15;
 }
 
-.textContent p {
+.integrationText p {
   font-size: 15px;
-  line-height: 1.7;
+  line-height: 1.75;
   color: var(--lp-text-muted);
   margin-bottom: 14px;
 }
 
-.textContent ul {
+.integrationList {
   list-style: none;
   padding: 0;
-  margin: 24px 0 0;
+  margin: 28px 0 0;
 }
 
-.textContent ul li {
-  padding: 10px 0;
+.integrationList li {
+  padding: 12px 0;
   font-size: 14px;
   color: var(--lp-text-muted);
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   border-bottom: 1px solid var(--lp-border);
 }
 
-.textContent ul li:last-child { border-bottom: none; }
+.integrationList li:last-child { border-bottom: none; }
 
-.textContent ul li::before {
+.integrationList li::before {
   content: '';
   width: 4px;
   height: 4px;
@@ -565,139 +680,189 @@
   flex-shrink: 0;
 }
 
-.imageBox { position: relative; }
-
-.integrationBadge {
+.integrationCard {
   background: var(--lp-bg-card);
   border: 1px solid var(--lp-border);
-  border-radius: 16px;
-  padding: 36px 28px;
+  border-radius: 18px;
+  padding: 48px 40px;
   text-align: center;
-}
-
-.integrationLogo {
-  width: 64px;
-  height: 64px;
-  object-fit: contain;
-  border-radius: 12px;
-  background: white;
-  padding: 8px;
-  margin-bottom: 18px;
-}
-
-.integrationText {
-  color: var(--lp-text-muted);
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.integrationLink {
-  color: var(--lp-accent-strong);
-  text-decoration: none;
-  font-weight: 500;
-  border-bottom: 1px solid transparent;
-  transition: border-color 0.2s ease;
-}
-
-.integrationLink:hover {
-  border-bottom-color: var(--lp-accent-strong);
-}
-
-/* ==================== FLUXOGRAMAS ==================== */
-.flowchartSection {
-  padding: 120px 32px;
-  background: transparent;
-  border-top: 1px solid var(--lp-border);
   position: relative;
-  z-index: 10;
+  overflow: hidden;
 }
 
-.flowchartContainer {
-  max-width: 1100px;
-  margin: 0 auto;
+.integrationCard::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(138, 164, 152, 0.18), transparent 50%);
+  opacity: 0.5;
+  pointer-events: none;
+  mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
+  -webkit-mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+  padding: 1px;
 }
 
-.flowchartBox {
-  background: var(--lp-bg-card);
-  border: 1px solid var(--lp-border);
+.integrationCardLogo {
+  width: 84px;
+  height: 84px;
+  object-fit: contain;
+  margin-bottom: 24px;
   border-radius: 16px;
-  padding: 36px 32px;
+  background: white;
+  padding: 10px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.3);
+}
+
+.integrationCardLabel {
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--lp-text-faint);
+  margin-bottom: 12px;
+}
+
+.integrationCardName {
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--lp-text);
+  margin-bottom: 16px;
+  letter-spacing: -0.01em;
+}
+
+.integrationCardLine {
+  font-size: 13.5px;
+  color: var(--lp-text-muted);
+  line-height: 1.65;
   margin-bottom: 24px;
 }
 
-.flowchartTitle {
-  text-align: left;
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 28px;
+.integrationLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   color: var(--lp-text);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 18px;
+  border: 1px solid var(--lp-border-strong);
+  border-radius: 8px;
+  transition: all 0.25s ease;
+}
+
+.integrationLink:hover {
+  background: var(--lp-text);
+  color: var(--lp-bg);
+  border-color: var(--lp-text);
+}
+
+.integrationLink span:last-child {
+  transition: transform 0.25s ease;
+}
+
+.integrationLink:hover span:last-child {
+  transform: translateX(3px);
+}
+
+/* ==================== PROCESS (como funciona) ==================== */
+.processSection {
+  padding: 140px 32px;
+  position: relative;
+  z-index: 10;
+  border-top: 1px solid var(--lp-border);
+}
+
+.processHead {
+  max-width: 1280px;
+  margin: 0 auto 64px;
+  text-align: center;
+}
+
+.processHead .pillarsKicker { justify-content: center; }
+
+.processHead h2 {
+  font-size: 38px;
+  font-weight: 500;
+  line-height: 1.1;
+  color: var(--lp-text);
+  letter-spacing: -0.025em;
+  max-width: 580px;
+  margin: 0 auto;
+}
+
+.processFlow {
+  max-width: 1080px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  border: 1px solid var(--lp-border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.processStep {
+  padding: 36px 32px;
+  border-right: 1px solid var(--lp-border);
+  position: relative;
+}
+
+.processStep:last-child { border-right: none; }
+
+.processStepNum {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  color: var(--lp-accent-strong);
+  margin-bottom: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.processStep h4 {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--lp-text);
+  margin-bottom: 10px;
   letter-spacing: -0.005em;
 }
 
-.flowDiagram {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
-
-.flowStep {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.flowBox {
-  background: rgba(255, 255, 255, 0.04);
+.processStep p {
+  font-size: 13.5px;
+  line-height: 1.65;
   color: var(--lp-text-muted);
-  padding: 10px 18px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  text-align: center;
-  border: 1px solid var(--lp-border);
-  white-space: nowrap;
-}
-
-.flowArrow {
-  color: var(--lp-text-faint);
-  font-size: 16px;
 }
 
 /* ==================== CTA ==================== */
 .ctaSection {
-  padding: 120px 32px;
-  position: relative;
+  padding: 140px 32px;
   text-align: center;
+  position: relative;
   z-index: 10;
   border-top: 1px solid var(--lp-border);
-  background: transparent;
 }
 
-.ctaSection::before { display: none; }
-
 .ctaContent {
-  position: relative;
-  z-index: 10;
   max-width: 640px;
   margin: 0 auto;
-  color: var(--lp-text);
 }
 
 .ctaContent h2 {
-  font-size: 34px;
+  font-size: 36px;
   font-weight: 500;
-  margin-bottom: 14px;
-  letter-spacing: -0.02em;
+  margin-bottom: 16px;
+  letter-spacing: -0.025em;
+  color: var(--lp-text);
+  line-height: 1.15;
 }
 
 .ctaContent p {
   font-size: 16px;
-  margin-bottom: 32px;
+  margin-bottom: 36px;
   color: var(--lp-text-muted);
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
 .ctaButtons {
@@ -709,9 +874,9 @@
 
 .btnCtaPrimary,
 .btnCtaSecondary {
-  padding: 12px 28px;
+  padding: 13px 28px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -725,10 +890,7 @@
   border-color: var(--lp-text);
 }
 
-.btnCtaPrimary:hover {
-  background: white;
-  border-color: white;
-}
+.btnCtaPrimary:hover { background: white; border-color: white; }
 
 .btnCtaSecondary {
   background: transparent;
@@ -745,27 +907,72 @@
 .footer {
   background: transparent;
   color: var(--lp-text-muted);
-  padding: 56px 32px 28px;
+  padding: 72px 32px 32px;
   border-top: 1px solid var(--lp-border);
   position: relative;
   z-index: 10;
 }
 
 .footerContent {
-  max-width: 1100px;
+  max-width: 1280px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 40px;
-  margin-bottom: 36px;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 48px;
+  margin-bottom: 56px;
+}
+
+.footerBrand {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.footerBrandRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.footerBrandLogo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  filter: invert(1) brightness(1.1);
+}
+
+.footerBrandName {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+}
+
+.footerBrandTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--lp-text);
+}
+
+.footerBrandSub {
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--lp-text-faint);
+}
+
+.footerBrand p {
+  font-size: 13px;
+  color: var(--lp-text-muted);
+  line-height: 1.6;
+  max-width: 320px;
 }
 
 .footerSection h3 {
-  font-size: 12.5px;
+  font-size: 11px;
   font-weight: 600;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
   color: var(--lp-text);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
@@ -773,19 +980,17 @@
 .footerSection a {
   color: var(--lp-text-muted);
   text-decoration: none;
-  line-height: 1.85;
+  line-height: 1.95;
   transition: color 0.2s ease;
   font-size: 13px;
   display: block;
 }
 
-.footerSection a:hover {
-  color: var(--lp-text);
-}
+.footerSection a:hover { color: var(--lp-text); }
 
 .footerBottom {
   text-align: center;
-  padding-top: 24px;
+  padding-top: 28px;
   border-top: 1px solid var(--lp-border);
   color: var(--lp-text-faint);
   font-size: 12px;
@@ -824,11 +1029,11 @@
   background: rgba(255, 255, 255, 0.04);
 }
 
-/* ==================== MODAL CADASTRO ==================== */
+/* ==================== MODAL ==================== */
 .modalOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.78);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -843,7 +1048,7 @@
   border-radius: 14px;
   padding: 36px 32px;
   width: 100%;
-  max-width: 520px;
+  max-width: 540px;
   max-height: 90vh;
   overflow-y: auto;
   border: 1px solid var(--lp-border);
@@ -876,12 +1081,7 @@
   background: rgba(255, 255, 255, 0.04);
 }
 
-.registerForm { color: var(--lp-text); }
-
-.registerHeader {
-  text-align: center;
-  margin-bottom: 24px;
-}
+.registerHeader { text-align: center; margin-bottom: 26px; }
 
 .registerHeader h2 {
   color: var(--lp-text);
@@ -922,10 +1122,7 @@
   gap: 12px;
 }
 
-.textarea {
-  resize: vertical;
-  min-height: 84px;
-}
+.textarea { resize: vertical; min-height: 84px; }
 
 .formActions {
   display: flex;
@@ -947,15 +1144,8 @@
   font-family: inherit;
 }
 
-.submitButton:hover:not(:disabled) {
-  background: white;
-  border-color: white;
-}
-
-.submitButton:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
+.submitButton:hover:not(:disabled) { background: white; border-color: white; }
+.submitButton:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .cancelButton {
   flex: 1;
@@ -976,49 +1166,84 @@
   background: rgba(255, 255, 255, 0.04);
 }
 
+/* ==================== STAGGER FADE-UP ==================== */
+.fadeUp {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeUp 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes fadeUp {
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* ==================== RESPONSIVE ==================== */
-@media (max-width: 1024px) {
-  .heroContent {
-    grid-template-columns: 1fr;
-    gap: 56px;
+@media (max-width: 1100px) {
+  .heroContent { grid-template-columns: 1fr; gap: 40px; padding: 60px 28px; }
+  .heroBrand { padding: 0; border-right: none; border-bottom: 1px solid var(--lp-border); padding-bottom: 56px; }
+  .heroConsole { padding: 0; }
+  .heroTitle { font-size: 46px; }
+  .heroMark { width: 160px; height: 160px; margin-bottom: 32px; }
+  .pillarsHead { grid-template-columns: 1fr; gap: 24px; }
+  .pillarsHead h2, .processHead h2 { font-size: 32px; }
+  .integrationContent { grid-template-columns: 1fr; gap: 48px; }
+  .pillars { grid-template-columns: 1fr; }
+  .pillar {
+    border-right: none;
+    border-bottom: 1px solid var(--lp-border);
+    padding: 32px 0;
   }
-  .heroTitle { font-size: 42px; }
-  .imageContent { grid-template-columns: 1fr; gap: 48px; }
-  .benefitsGrid { grid-template-columns: repeat(2, 1fr); }
+  .pillar:not(:first-child) { padding-left: 0; }
+  .pillar:last-child { border-bottom: none; padding-bottom: 0; }
+  .processFlow { grid-template-columns: 1fr; }
+  .processStep {
+    border-right: none;
+    border-bottom: 1px solid var(--lp-border);
+  }
+  .processStep:last-child { border-bottom: none; }
+  .footerContent { grid-template-columns: 1fr 1fr; gap: 36px; }
 }
 
 @media (max-width: 768px) {
   .header { padding: 0.7rem 0; }
   .headerContent { padding: 0 18px; }
   .btnLoginHeader, .btnSignupHeader { padding: 8px 14px; font-size: 12.5px; }
-  .logoLabel { font-size: 13px; }
-  .hero { padding: 110px 20px 60px; }
+  .logoLabelBot { display: none; }
+  .hero { padding: 100px 0 0; }
+  .heroContent { padding: 40px 20px; gap: 32px; }
   .heroTitle { font-size: 34px; }
   .heroSubtitle { font-size: 15px; }
-  .sectionTitle h2 { font-size: 26px; }
-  .textContent h2 { font-size: 26px; }
-  .ctaContent h2 { font-size: 26px; }
+  .pillarsSection,
+  .manifestoSection,
+  .integrationSection,
+  .processSection,
+  .ctaSection { padding: 90px 20px; }
+  .manifesto p { font-size: 24px; }
+  .pillarsHead h2,
+  .processHead h2,
+  .ctaContent h2,
+  .integrationText h2 { font-size: 26px; }
   .footerContent { grid-template-columns: 1fr; gap: 28px; }
-  .benefitsGrid { grid-template-columns: 1fr; }
   .loginCard { padding: 32px 24px; }
   .inputRow { grid-template-columns: 1fr; }
   .formActions { flex-direction: column; }
-  .benefitsSection,
-  .imageSection,
-  .flowchartSection,
-  .ctaSection { padding: 80px 20px; }
+  .integrationCard { padding: 36px 24px; }
 }
 
 @media (max-width: 480px) {
   .heroTitle { font-size: 28px; }
+  .heroMark { width: 130px; height: 130px; }
+  .manifesto p { font-size: 20px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .fadeUp,
   .orb,
-  .refinedLogoImage,
-  .refinedLogoContainer::before {
+  .heroMarkImage,
+  .heroMarkGlow,
+  .loginCardLabel::before {
     animation: none !important;
   }
   .fadeUp { opacity: 1; transform: none; }
+  .heroMarkImage { opacity: 1; clip-path: none; }
 }
