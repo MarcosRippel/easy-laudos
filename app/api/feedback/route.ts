@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       const fullPath = path.join(AUDIO_DIR, filename);
       const buf = Buffer.from(await audio.arrayBuffer());
       await fs.writeFile(fullPath, buf);
-      audioPath = `/uploads/feedback/${filename}`;
+      audioPath = `/api/uploads/feedback/${filename}`;
       audioMime = audio.type;
       audioBytes = audio.size;
     }
