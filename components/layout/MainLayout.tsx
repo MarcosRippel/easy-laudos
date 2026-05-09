@@ -9,6 +9,7 @@ import { useAuth } from '../auth/AuthWrapper';
 import TutorialProvider from '../tutorial/TutorialProvider';
 import TutorialButton from '../tutorial/TutorialButton';
 import PWAInstallButton from '../PWAInstallButton';
+import FeedbackButton from '../FeedbackButton';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -286,6 +287,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           <TutorialButton />
         </TutorialProvider>
       </main>
+      <FeedbackButton />
     </>
   );
 };
