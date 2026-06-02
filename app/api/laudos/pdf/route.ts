@@ -5,37 +5,41 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import type { Client, Vehicle, Laudo, AdminSetting } from '@prisma/client';
 import type { Equipment } from '@/types/equipment';
+import { prisma } from '@/lib/prisma';
+import { getSessionFromRequest } from '@/lib/middleware-auth';
+import { getOrCreateLaudoHash } from '@/lib/laudoHash';
 
 // Função para gerar PDF de laudo de ruído
-async function generateRuidoPDF(laudoId: string, adminSettings: AdminSetting) {
+async function generateRuidoPDF(laudoId: string, adminSettings: AdminSetting, qrCodeSvg: string = '', documentHash: string = '') {
   console.log('🔊 Gerando PDF de laudo de ruído...');
   console.log(`🔍 LaudoId: ${laudoId}`);
-  
-  // Buscar dados do laudo de ruído
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-  const fetchUrl = `${baseUrl}/api/laudos/ruido/${laudoId}`;
-  console.log(`🔗 Fetch URL: ${fetchUrl}`);
-  
-  const ruidoResponse = await fetch(fetchUrl);
-  console.log(`📊 Response Status: ${ruidoResponse.status}`);
-  console.log(`📊 Response StatusText: ${ruidoResponse.statusText}`);
-  
-  if (!ruidoResponse.ok) {
-    const errorText = await ruidoResponse.text();
-    console.error(`❌ Erro na busca do laudo de ruído:`, errorText);
-    throw new Error(`Falha ao buscar dados do laudo de ruído - Status: ${ruidoResponse.status} - ${errorText}`);
+
+  // Buscar dados do laudo de ruído DIRETAMENTE do banco (sem fetch HTTP)
+  const laudoRuidoDB = await prisma.laudoRuido.findUnique({
+    where: { laudoId },
+    include: {
+      laudo: { include: { client: true, vehicle: true } },
+      equipment: true,
+    }
+  });
+
+  if (!laudoRuidoDB || !laudoRuidoDB.laudo) {
+    throw new Error(`Laudo de ruído não encontrado para laudoId: ${laudoId}`);
   }
-  
-  const ruidoData = await ruidoResponse.json();
-  
-  // 🔍 LOG: Verificar dados de aceleração e data de vencimento
-  console.log('🔍 DEBUG - Dados recebidos:');
+
+  // Estruturar dados no mesmo formato que o antigo fetch retornava
+  const ruidoData = {
+    ...laudoRuidoDB,
+    dataVencimento: laudoRuidoDB.laudo.dataVencimento,
+    observacoes: laudoRuidoDB.laudo.observacoes,
+    laudo: laudoRuidoDB.laudo,
+    equipmentId: laudoRuidoDB.equipmentId,
+  };
+
+  console.log('🔍 DEBUG - Dados recebidos do banco:');
   console.log('aceleracao1:', ruidoData.aceleracao1, 'tipo:', typeof ruidoData.aceleracao1);
-  console.log('dataVencimento RAW:', ruidoData.dataVencimento, 'tipo:', typeof ruidoData.dataVencimento);
-  console.log('inspetorResponsavel:', ruidoData.inspetorResponsavel);
-  console.log('observacoes:', ruidoData.observacoes);
-  console.log('🔍 TODOS OS DADOS:', JSON.stringify(ruidoData, null, 2));
-  
+  console.log('dataVencimento RAW:', ruidoData.dataVencimento);
+
   // 🔧 CONVERTER DECIMAL PARA NUMBER - Prisma retorna Decimal objects
   const toNumber = (value: any): number => {
     if (value === null || value === undefined) return 0;
@@ -46,61 +50,60 @@ async function generateRuidoPDF(laudoId: string, adminSettings: AdminSetting) {
     if (value && typeof value.toString === 'function') return parseFloat(value.toString()) || 0;
     return 0;
   };
-  
-  // Buscar dados do equipamento
+
+  // Buscar dados do equipamento DIRETAMENTE do banco
   let equipmentData: Equipment | null = null;
   if (ruidoData.equipmentId) {
     try {
-      const equipmentResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/equipments/${ruidoData.equipmentId}`);
-      if (equipmentResponse.ok) {
-        equipmentData = await equipmentResponse.json();
-      }
+      equipmentData = await prisma.equipment.findUnique({
+        where: { id: ruidoData.equipmentId }
+      }) as Equipment | null;
     } catch (e) {
       console.error('Erro ao buscar equipamento:', e);
     }
   }
-  
+
   // Calcular estatísticas - Converter Decimal para Number
   const aceleracaoValues = [
     toNumber(ruidoData.aceleracao1), toNumber(ruidoData.aceleracao2), toNumber(ruidoData.aceleracao3),
     toNumber(ruidoData.aceleracao4), toNumber(ruidoData.aceleracao5), toNumber(ruidoData.aceleracao6)
   ];
-  
+
   const marchaLentaValues = [
     toNumber(ruidoData.marchaLenta1), toNumber(ruidoData.marchaLenta2), toNumber(ruidoData.marchaLenta3),
     toNumber(ruidoData.marchaLenta4), toNumber(ruidoData.marchaLenta5), toNumber(ruidoData.marchaLenta6)
   ];
-  
+
   const calculateMedian = (values: number[]): number => {
     const sorted = [...values].sort((a, b) => a - b);
     const mid = Math.floor(sorted.length / 2);
-    return sorted.length % 2 !== 0 
-      ? sorted[mid] 
+    return sorted.length % 2 !== 0
+      ? sorted[mid]
       : (sorted[mid - 1] + sorted[mid]) / 2;
   };
-  
+
   const medianaAceleracao = calculateMedian(aceleracaoValues);
   const maxAceleracao = Math.max(...aceleracaoValues);
   const medianaMarchaLenta = calculateMedian(marchaLentaValues);
   const maxMarchaLenta = Math.max(...marchaLentaValues);
-  
+
   // 📊 CALCULAR COORDENADAS DO GRÁFICO - ATUALIZADAS PARA SVG EXPANDIDO
   const calculateChartCoordinates = (value: number) => {
     const maxChartValue = 120; // Escala do gráfico: 0-120 dB (ampliada)
     const chartHeight = 130; // Altura total do gráfico (160 - 30) - SVG expandido
     const baseY = 160; // Y da base do gráfico - SVG expandido
-    
+
     const barHeight = Math.max(2, (value / maxChartValue) * chartHeight); // Mínimo 2px para visibilidade
     const barY = baseY - barHeight;
     const textY = barY + (barHeight / 2) + 4; // +4 para centralizar texto
-    
+
     return {
       height: Math.round(barHeight),
       y: Math.round(barY),
       textY: Math.round(textY)
     };
   };
-  
+
   // Calcular coordenadas para cada medição
   const chartData = {
     aceleracao1: calculateChartCoordinates(toNumber(ruidoData.aceleracao1)),
@@ -116,33 +119,49 @@ async function generateRuidoPDF(laudoId: string, adminSettings: AdminSetting) {
     marchaLenta5: calculateChartCoordinates(toNumber(ruidoData.marchaLenta5)),
     marchaLenta6: calculateChartCoordinates(toNumber(ruidoData.marchaLenta6)),
   };
-  
+
   // Ler template HTML
   const templatePath = join(process.cwd(), 'templates', 'laudo-ruido-template.html');
   let htmlTemplate = readFileSync(templatePath, 'utf-8');
-  
+
   // Converter logo para base64
   let logoBase64 = '';
   if (adminSettings.companyLogoUrl) {
     try {
-      const logoUrl = adminSettings.companyLogoUrl.startsWith('http')
-        ? adminSettings.companyLogoUrl
-        : `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}${adminSettings.companyLogoUrl}`;
-      
-      const logoResponse = await fetch(logoUrl);
-      if (logoResponse.ok) {
-        const logoBlob = await logoResponse.blob();
-        const logoArrayBuffer = await logoBlob.arrayBuffer();
-        const logoBytes = new Uint8Array(logoArrayBuffer);
-        const logoType = adminSettings.companyLogoUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
-        const logoBase64String = Buffer.from(logoBytes).toString('base64');
-        logoBase64 = `data:${logoType};base64,${logoBase64String}`;
+      // Tentar ler do filesystem primeiro (para URLs relativas como /uploads/logo.png)
+      if (!adminSettings.companyLogoUrl.startsWith('http')) {
+        const logoPath = join(process.cwd(), 'public', adminSettings.companyLogoUrl);
+        try {
+          const logoBytes = readFileSync(logoPath);
+          const logoType = adminSettings.companyLogoUrl.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+          logoBase64 = `data:${logoType};base64,${logoBytes.toString('base64')}`;
+          console.log('✅ Logo carregado do filesystem:', logoPath);
+        } catch {
+          console.log('⚠️ Falha ao ler logo do filesystem, tentando HTTP...');
+        }
+      }
+
+      // Fallback HTTP (para URLs absolutas)
+      if (!logoBase64) {
+        const logoUrl = adminSettings.companyLogoUrl.startsWith('http')
+          ? adminSettings.companyLogoUrl
+          : `${process.env.NEXTAUTH_URL || 'http://localhost:3006'}${adminSettings.companyLogoUrl}`;
+
+        const logoResponse = await fetch(logoUrl);
+        if (logoResponse.ok) {
+          const logoBlob = await logoResponse.blob();
+          const logoArrayBuffer = await logoBlob.arrayBuffer();
+          const logoBytes = new Uint8Array(logoArrayBuffer);
+          const logoType = adminSettings.companyLogoUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
+          const logoBase64String = Buffer.from(logoBytes).toString('base64');
+          logoBase64 = `data:${logoType};base64,${logoBase64String}`;
+        }
       }
     } catch (e) {
       console.error('Erro ao converter logo para base64:', e);
     }
   }
-  
+
   // Substituir placeholders no template
   const replacements = {
     '{{osNumber}}': ruidoData.laudo.ordemServico || '',
@@ -181,13 +200,16 @@ async function generateRuidoPDF(laudoId: string, adminSettings: AdminSetting) {
     '{{maxAceleracao}}': maxAceleracao.toFixed(1),
     '{{medianaMarchaLenta}}': medianaMarchaLenta.toFixed(1),
     '{{maxMarchaLenta}}': maxMarchaLenta.toFixed(1),
+    '{{ruidoMaximoMedido}}': ruidoData.ruidoMaximoMedido ? toNumber(ruidoData.ruidoMaximoMedido).toFixed(1) : 'N/A',
     '{{resultado}}': ruidoData.resultado || 'APROVADO',
     '{{resultClass}}': ruidoData.resultado === 'APROVADO' ? 'aprovado' : 'reprovado',
     '{{validityDate}}': ruidoData.dataVencimento || 'NÃO INFORMADO',
     '{{inspector}}': ruidoData.inspetorResponsavel || 'Espaço para assinatura digital',
     '{{observations}}': ruidoData.observacoes || 'Laudo de ruído conforme especificações técnicas. Medições realizadas em condições controladas.',
     '{{generationDate}}': format(new Date(), 'dd/MM/yyyy HH:mm:ss'),
-    
+    '{{qrCodeSvg}}': qrCodeSvg,
+    '{{documentHash}}': documentHash ? `SHA-256: ${documentHash.substring(0, 32)}...` : '',
+
     // 📊 COORDENADAS DO GRÁFICO - Aceleração
     '{{chart_aceleracao1_y}}': chartData.aceleracao1.y.toString(),
     '{{chart_aceleracao1_h}}': chartData.aceleracao1.height.toString(),
@@ -207,7 +229,7 @@ async function generateRuidoPDF(laudoId: string, adminSettings: AdminSetting) {
     '{{chart_aceleracao6_y}}': chartData.aceleracao6.y.toString(),
     '{{chart_aceleracao6_h}}': chartData.aceleracao6.height.toString(),
     '{{chart_aceleracao6_text_y}}': chartData.aceleracao6.textY.toString(),
-    
+
     // 📊 COORDENADAS DO GRÁFICO - Marcha Lenta
     '{{chart_marchalenta1_y}}': chartData.marchaLenta1.y.toString(),
     '{{chart_marchalenta1_h}}': chartData.marchaLenta1.height.toString(),
@@ -228,43 +250,416 @@ async function generateRuidoPDF(laudoId: string, adminSettings: AdminSetting) {
     '{{chart_marchalenta6_h}}': chartData.marchaLenta6.height.toString(),
     '{{chart_marchalenta6_text_y}}': chartData.marchaLenta6.textY.toString()
   };
-  
+
   // Aplicar todas as substituições
   Object.entries(replacements).forEach(([placeholder, value]) => {
     htmlTemplate = htmlTemplate.replace(new RegExp(placeholder, 'g'), value);
   });
-  
+
   return htmlTemplate;
 }
 
-// Função para gerar PDF de laudo de checklist (código existente)
-async function generateChecklistHTML(fullLaudo: Laudo & { client: Client; vehicle: Vehicle }, adminSettings: AdminSetting) {
+// Função para gerar PDF de laudo LIT (server-side)
+async function generateLitHTML(fullLaudo: Laudo & { client: Client; vehicle: Vehicle }, adminSettings: AdminSetting, qrCodeSvg: string = '', documentHash: string = '') {
+  console.log('📝 Gerando HTML de laudo LIT...');
+
   // Converter logo para base64
   let logoBase64 = '';
   if (adminSettings.companyLogoUrl) {
     try {
       const logoUrl = adminSettings.companyLogoUrl.startsWith('http')
         ? adminSettings.companyLogoUrl
-        : `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}${adminSettings.companyLogoUrl}`;
+        : `${process.env.NEXTAUTH_URL || 'http://localhost:3006'}${adminSettings.companyLogoUrl}`;
       
-      const logoResponse = await fetch(logoUrl);
-      if (logoResponse.ok) {
-        const logoBlob = await logoResponse.blob();
-        const logoArrayBuffer = await logoBlob.arrayBuffer();
-        const logoBytes = new Uint8Array(logoArrayBuffer);
-        const logoType = adminSettings.companyLogoUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
-        const logoBase64String = Buffer.from(logoBytes).toString('base64');
-        logoBase64 = `data:${logoType};base64,${logoBase64String}`;
+      const isLocalLogo = adminSettings.companyLogoUrl.startsWith('/uploads/') || adminSettings.companyLogoUrl.startsWith('/api/uploads/');
+      if (isLocalLogo) {
+        const pathModule = require('path');
+        const fs = require('fs');
+        const filename = adminSettings.companyLogoUrl.replace(/^\/(api\/)?uploads\//, '');
+        const filePath = pathModule.join(process.cwd(), 'public', 'uploads', filename);
+        if (fs.existsSync(filePath)) {
+          const logoBytes = fs.readFileSync(filePath);
+          const ext = pathModule.extname(filename).toLowerCase();
+          const logoType = ext === '.png' ? 'image/png' : 'image/jpeg';
+          logoBase64 = `data:${logoType};base64,${logoBytes.toString('base64')}`;
+        }
+      } else {
+        const logoResponse = await fetch(logoUrl);
+        if (logoResponse.ok) {
+          const logoBytes = new Uint8Array(await logoResponse.arrayBuffer());
+          const logoType = logoResponse.headers.get('content-type') || 'image/png';
+          const logoBase64String = Buffer.from(logoBytes).toString('base64');
+          logoBase64 = `data:${logoType};base64,${logoBase64String}`;
+        }
       }
     } catch (e) {
       console.error('Erro ao converter logo para base64:', e);
     }
   }
+
+  // Processar imagens do laudo - converter para base64
+  const processImageUrl = async (url: string | null): Promise<string> => {
+    if (!url || url.trim() === '') return '';
+    try {
+      if (url.startsWith('data:')) return url;
+      const isLocalUpload = url.startsWith('/uploads/') || url.startsWith('/api/uploads/');
+      if (isLocalUpload) {
+        const fs = require('fs');
+        const pathModule = require('path');
+        const filename = url.replace(/^\/(api\/)?uploads\//, '');
+        const filePath = pathModule.join(process.cwd(), 'public', 'uploads', filename);
+        if (fs.existsSync(filePath)) {
+          const fileBuffer = fs.readFileSync(filePath);
+          const ext = pathModule.extname(filename).toLowerCase();
+          const mimeType = ext === '.png' ? 'image/png' : 'image/jpeg';
+          return `data:${mimeType};base64,${fileBuffer.toString('base64')}`;
+        }
+      }
+      const imageUrl = url.startsWith('http') ? url : `${process.env.NEXTAUTH_URL || 'http://localhost:3006'}${url}`;
+      const response = await fetch(imageUrl);
+      if (response.ok) {
+        const arrayBuffer = await response.arrayBuffer();
+        const mimeType = response.headers.get('content-type') || 'image/jpeg';
+        return `data:${mimeType};base64,${Buffer.from(new Uint8Array(arrayBuffer)).toString('base64')}`;
+      }
+    } catch (e) {
+      console.error('Erro ao processar imagem LIT:', e);
+    }
+    return '';
+  };
+
+  const fotoDianteiraBase64 = await processImageUrl(fullLaudo.fotoDianteiraUrl);
+  const fotoTraseiraBase64 = await processImageUrl(fullLaudo.fotoTraseiraUrl);
+  const fotoChassiBase64 = await processImageUrl(fullLaudo.fotoChassiUrl);
+
+  console.log('🖼️ LIT - Imagens processadas:', { 
+    dianteira: !!fotoDianteiraBase64, 
+    traseira: !!fotoTraseiraBase64, 
+    chassi: !!fotoChassiBase64 
+  });
+
+  // Formatar datas com proteção
+  let dataEmissaoFormatted = '';
+  try {
+    if (fullLaudo.dataEmissao) {
+      const d = new Date(fullLaudo.dataEmissao);
+      if (!isNaN(d.getTime())) dataEmissaoFormatted = format(d, 'dd/MM/yyyy');
+    }
+  } catch { dataEmissaoFormatted = 'Data Inválida'; }
+
+  let dataVerifPinoReiFormatted = '';
+  try {
+    if (fullLaudo.dataVerifPinoRei) {
+      let dateStr = fullLaudo.dataVerifPinoRei;
+      if (dateStr.includes('/')) {
+        const parts = dateStr.split('/');
+        if (parts.length === 3) dateStr = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+      }
+      const d = new Date(dateStr);
+      if (!isNaN(d.getTime())) dataVerifPinoReiFormatted = format(d, 'dd/MM/yyyy');
+      else dataVerifPinoReiFormatted = fullLaudo.dataVerifPinoRei;
+    }
+  } catch { dataVerifPinoReiFormatted = fullLaudo.dataVerifPinoRei || ''; }
+
+  // Processar observações - unificar parágrafos
+  const obsText = (fullLaudo.observacoes || '')
+    .replace(/--- DADOS CHECKLIST ---[\s\S]*$/, '') // Remover dados checklist se houver
+    .trim();
+
+  const companyName = adminSettings.companyName || 'EMPRESA EXEMPLO INSPEÇÕES LTDA';
+  const companyAddress = adminSettings.companyAddress || 'Rua Exemplo 100 - Cidade Exemplo/RS';
+  const companyPhone = adminSettings.companyPhone || '(11) 90000-0000';
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: A4; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { 
+    font-family: Arial, Helvetica, sans-serif; 
+    font-size: 9pt; 
+    color: #000;
+    width: 210mm;
+    min-height: 297mm;
+    position: relative;
+  }
+  .page { 
+    padding: 8mm 10mm;
+    position: relative;
+  }
+  /* Marca d'agua */
+  .watermark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0.06;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .watermark img { width: 400px; height: auto; }
+  .content { position: relative; z-index: 1; }
   
+  /* Header */
+  .header { text-align: center; margin-bottom: 3mm; }
+  .header-logo { height: 40px; margin-bottom: 2mm; }
+  .header-bar {
+    background: #c0c0c0;
+    padding: 2mm 3mm;
+    font-size: 7pt;
+    border: 0.5px solid #000;
+  }
+  .header-title { font-size: 11pt; font-weight: bold; margin-top: 1mm; }
+  .header-date { float: right; font-size: 9pt; }
+  
+  /* Info boxes */
+  .info-row { display: flex; gap: 0; margin-top: 2mm; }
+  .info-box {
+    border: 0.5px solid #000;
+    padding: 1.5mm 2mm;
+    flex: 1;
+  }
+  .info-label { font-size: 6pt; color: #444; }
+  .info-value { font-size: 9pt; margin-top: 0.5mm; }
+  
+  /* Sections */
+  .section { 
+    border: 1.5px solid #000; 
+    margin-top: 3mm;
+  }
+  .section-title {
+    background: #c0c0c0;
+    padding: 1.5mm 3mm;
+    font-size: 9pt;
+    font-weight: bold;
+    border-bottom: 0.5px solid #000;
+  }
+  .section-body { padding: 2mm 3mm; }
+  .section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1mm 3mm; }
+  .section-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1mm 3mm; }
+  
+  /* Vehicle section */
+  .vehicle-row { display: flex; border-bottom: 0.5px solid #ccc; }
+  .vehicle-row:last-child { border-bottom: none; }
+  .vehicle-cell { flex: 1; padding: 1mm 2mm; border-right: 0.5px solid #ccc; }
+  .vehicle-cell:last-child { border-right: none; }
+  
+  /* Photo sections */
+  .photos-row { display: flex; gap: 3mm; margin-top: 3mm; }
+  .photo-section { flex: 1; border: 1.5px solid #000; }
+  .photo-section.full { flex: none; width: 100%; }
+  .photo-title {
+    background: #c0c0c0;
+    padding: 1.5mm 3mm;
+    font-size: 9pt;
+    font-weight: bold;
+    border-bottom: 0.5px solid #000;
+  }
+  .photo-body { padding: 2mm; text-align: center; min-height: 85px; }
+  .photo-body img { 
+    max-width: 100%; 
+    max-height: 130px; 
+    object-fit: contain; 
+  }
+  .no-photo { 
+    color: #999; 
+    font-style: italic; 
+    padding: 30px 0; 
+  }
+  
+  /* Observations */
+  .obs-text { font-size: 8pt; line-height: 1.4; text-align: justify; }
+  
+  /* Footer row */
+  .footer-row { display: flex; gap: 3mm; margin-top: 3mm; }
+  .footer-box { flex: 1; border: 1.5px solid #000; }
+  .footer-title {
+    background: #c0c0c0;
+    padding: 1.5mm 3mm;
+    font-size: 9pt;
+    font-weight: bold;
+    border-bottom: 0.5px solid #000;
+  }
+  .footer-body { padding: 3mm; min-height: 30px; }
+  .expiry-date { font-size: 13pt; text-align: center; margin-top: 3mm; }
+
+  /* QR Code */
+  .qr-section { 
+    margin-top: 3mm; 
+    text-align: center; 
+    font-size: 6pt; 
+    color: #666; 
+  }
+  .qr-section svg { width: 60px; height: 60px; }
+</style>
+</head>
+<body>
+<div class="page">
+  ${logoBase64 ? `<div class="watermark"><img src="${logoBase64}" /></div>` : ''}
+  <div class="content">
+    <!-- Header -->
+    <div class="header">
+      ${logoBase64 ? `<img src="${logoBase64}" class="header-logo" />` : ''}
+      <div class="header-bar">
+        ${companyName} - ${companyAddress} - Fone: ${companyPhone}
+        <div class="header-title">
+          LAUDO INSPEÇÃO TÉCNICA
+          <span class="header-date">DATA: ${dataEmissaoFormatted}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cod Temporal / Ordem Serviço -->
+    <div class="info-row">
+      <div class="info-box">
+        <div class="info-label">Cód. Temporal:</div>
+        <div class="info-value">${fullLaudo.codTemporal || ''}</div>
+      </div>
+      <div class="info-box">
+        <div class="info-label">Ordem de Serviço N°:</div>
+        <div class="info-value">${fullLaudo.ordemServico}</div>
+      </div>
+    </div>
+
+    <!-- 1. Client Section -->
+    <div class="section">
+      <div class="section-title">1 - IDENTIFICAÇÃO DO CONTRATANTE</div>
+      <div class="section-body">
+        <div class="section-grid">
+          <div><span class="info-label">Razão Social</span><br/>${fullLaudo.client.name}</div>
+          <div><span class="info-label">CNPJ</span><br/>${fullLaudo.client.cnpj}</div>
+          <div><span class="info-label">Endereço</span><br/>${[fullLaudo.client.addressStreet, fullLaudo.client.addressNumber, fullLaudo.client.addressDistrict].filter(Boolean).join(', ')}</div>
+          <div><span class="info-label">Cidade/UF</span><br/>${[fullLaudo.client.addressCity, fullLaudo.client.addressState].filter(Boolean).join(' / ')}</div>
+          <div><span class="info-label">CEP</span><br/>${fullLaudo.client.addressZip || ''}</div>
+          <div><span class="info-label">Telefone</span><br/>${fullLaudo.client.phone || ''}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Vehicle Section -->
+    <div class="section">
+      <div class="section-title">2 - IDENTIFICAÇÃO DO VEÍCULO</div>
+      <div class="section-body">
+        <div class="vehicle-row">
+          <div class="vehicle-cell"><span class="info-label">Espécie/Tipo</span><br/>${fullLaudo.vehicle.especieTipo || ''}</div>
+          <div class="vehicle-cell"><span class="info-label">Marca/Modelo</span><br/>${fullLaudo.vehicle.marcaModelo || ''}</div>
+          <div class="vehicle-cell"><span class="info-label">Nro. Chassi</span><br/>${fullLaudo.vehicle.numeroChassi || ''}</div>
+          <div class="vehicle-cell"><span class="info-label">Placa</span><br/>${fullLaudo.vehicle.placa || ''}</div>
+          <div class="vehicle-cell"><span class="info-label">Ano Fab./Modelo</span><br/>${fullLaudo.vehicle.anoFabricacaoModelo || ''}</div>
+        </div>
+        <div class="vehicle-row">
+          <div class="vehicle-cell"><span class="info-label">Fabricante Equipamento</span><br/>${fullLaudo.fabricanteEquipamento || 'N.A'}</div>
+          <div class="vehicle-cell"><span class="info-label">Mês/Ano Fabric.</span><br/>${fullLaudo.mesAnoFabricEquip || 'N.A'}</div>
+          <div class="vehicle-cell"><span class="info-label">⌀ - Pino Rei</span><br/>${fullLaudo.diametroPinoRei || 'N.A'}</div>
+          <div class="vehicle-cell"><span class="info-label">Data Verif. Pino Rei</span><br/>${dataVerifPinoReiFormatted}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 & 4 - Photos Dianteira / Traseira -->
+    <div class="photos-row">
+      <div class="photo-section">
+        <div class="photo-title">3 - FOTO DIANTEIRA</div>
+        <div class="photo-body">
+          ${fotoDianteiraBase64 ? `<img src="${fotoDianteiraBase64}" />` : '<div class="no-photo">Sem foto</div>'}
+        </div>
+      </div>
+      <div class="photo-section">
+        <div class="photo-title">4 - FOTO TRASEIRA</div>
+        <div class="photo-body">
+          ${fotoTraseiraBase64 ? `<img src="${fotoTraseiraBase64}" />` : '<div class="no-photo">Sem foto</div>'}
+        </div>
+      </div>
+    </div>
+
+    <!-- 5 - Photo Chassi -->
+    <div class="photo-section full" style="margin-top: 3mm;">
+      <div class="photo-title">5 - FOTO DO CHASSI</div>
+      <div class="photo-body">
+        ${fotoChassiBase64 ? `<img src="${fotoChassiBase64}" />` : '<div class="no-photo">Sem foto</div>'}
+      </div>
+    </div>
+
+    <!-- 6 - Observations -->
+    <div class="section" style="margin-top: 3mm;">
+      <div class="section-title">6 - OBSERVAÇÕES</div>
+      <div class="section-body">
+        <div class="obs-text">${obsText.replace(/\n/g, '<br/>')}</div>
+      </div>
+    </div>
+
+    <!-- 7 - Expiry + Signature -->
+    <div class="footer-row">
+      <div class="footer-box">
+        <div class="footer-title">7 - DATA DE VENCIMENTO</div>
+        <div class="footer-body">
+          <div class="expiry-date">${fullLaudo.dataVencimento || ''}</div>
+        </div>
+      </div>
+      <div class="footer-box">
+        <div class="footer-title">ASSINATURA/CARIMBO TÉCNICO</div>
+        <div class="footer-body"></div>
+      </div>
+    </div>
+
+    <!-- QR Code -->
+    ${qrCodeSvg ? `
+    <div class="qr-section">
+      ${qrCodeSvg}
+      <div>Hash: ${documentHash.substring(0, 16)}...</div>
+    </div>
+    ` : ''}
+  </div>
+</div>
+</body>
+</html>`;
+}
+
+// Função para gerar PDF de laudo de checklist (código existente)
+async function generateChecklistHTML(fullLaudo: Laudo & { client: Client; vehicle: Vehicle }, adminSettings: AdminSetting, qrCodeSvg: string = '', documentHash: string = '') {
+  // Converter logo para base64 - filesystem-first (igual ao LIT)
+  let logoBase64 = '';
+  if (adminSettings.companyLogoUrl) {
+    try {
+      const logoUrl = adminSettings.companyLogoUrl.startsWith('http')
+        ? adminSettings.companyLogoUrl
+        : `http://localhost:3006${adminSettings.companyLogoUrl}`;
+
+      const isLocalLogo = adminSettings.companyLogoUrl.startsWith('/uploads/') || adminSettings.companyLogoUrl.startsWith('/api/uploads/');
+      if (isLocalLogo) {
+        const pathModule = require('path');
+        const fs = require('fs');
+        const filename = adminSettings.companyLogoUrl.replace(/^\/(api\/)?uploads\//, '');
+        const filePath = pathModule.join(process.cwd(), 'public', 'uploads', filename);
+        if (fs.existsSync(filePath)) {
+          const logoBytes = fs.readFileSync(filePath);
+          const ext = pathModule.extname(filename).toLowerCase();
+          const logoType = ext === '.png' ? 'image/png' : 'image/jpeg';
+          logoBase64 = `data:${logoType};base64,${logoBytes.toString('base64')}`;
+          console.log('✅ Logo checklist carregado do filesystem:', filePath);
+        }
+      }
+
+      if (!logoBase64) {
+        const logoResponse = await fetch(logoUrl);
+        if (logoResponse.ok) {
+          const logoBytes = new Uint8Array(await logoResponse.arrayBuffer());
+          const logoType = logoResponse.headers.get('content-type') || 'image/png';
+          const logoBase64String = Buffer.from(logoBytes).toString('base64');
+          logoBase64 = `data:${logoType};base64,${logoBase64String}`;
+        }
+      }
+    } catch (e) {
+      console.error('Erro ao converter logo para base64:', e);
+    }
+  }
+
   // Parse dos dados do checklist
   const observacoes = fullLaudo.observacoes || '';
   let checklistData: Record<string, string> = {};
-  
+
   try {
     const checklistStart = observacoes.indexOf('--- DADOS CHECKLIST ---');
     if (checklistStart !== -1) {
@@ -298,24 +693,48 @@ async function generateChecklistHTML(fullLaudo: Laudo & { client: Client; vehicl
       console.log('❌ URL vazia ou null, retornando string vazia');
       return '';
     }
-    
+
     try {
       // Se já é base64, retornar como está
       if (url.startsWith('data:')) {
         console.log('✅ URL já é base64, retornando como está');
         return url;
       }
-      
-      // Construir URL completa se necessário
+
+      // Para uploads locais, ler diretamente do disco (mais confiável em produção/Docker)
+      const isLocalUpload = url.startsWith('/uploads/') || url.startsWith('/api/uploads/');
+      if (isLocalUpload) {
+        const fs = require('fs');
+        const pathModule = require('path');
+        // Extract filename from either /uploads/filename or /api/uploads/filename
+        const filename = url.replace(/^\/(api\/)?uploads\//, '');
+        const filePath = pathModule.join(process.cwd(), 'public', 'uploads', filename);
+
+        console.log('📁 Lendo imagem do disco:', filePath);
+
+        if (fs.existsSync(filePath)) {
+          const fileBuffer = fs.readFileSync(filePath);
+          const ext = pathModule.extname(filename).toLowerCase();
+          const mimeType = ext === '.png' ? 'image/png' : 'image/jpeg';
+          const base64String = fileBuffer.toString('base64');
+          const result = `data:${mimeType};base64,${base64String}`;
+          console.log('✅ Imagem lida do disco com sucesso, tamanho:', result.length);
+          return result;
+        } else {
+          console.log('❌ Arquivo não encontrado no disco:', filePath);
+        }
+      }
+
+      // Fallback: buscar via HTTP para URLs externas
       const imageUrl = url.startsWith('http')
         ? url
-        : `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}${url}`;
-      
+        : `http://localhost:3006${url}`;
+
       console.log('🌐 Tentando buscar imagem em:', imageUrl);
-      
+
       const response = await fetch(imageUrl);
       console.log('📡 Response status:', response.status, 'OK:', response.ok);
-      
+
       if (response.ok) {
         const arrayBuffer = await response.arrayBuffer();
         const bytes = new Uint8Array(arrayBuffer);
@@ -337,10 +756,10 @@ async function generateChecklistHTML(fullLaudo: Laudo & { client: Client; vehicl
   console.log('🔄 Iniciando processamento das imagens...');
   const fotoDianteiraBase64 = await processImageUrl(fullLaudo.fotoDianteiraUrl);
   console.log('📷 Foto dianteira processada:', !!fotoDianteiraBase64);
-  
+
   const fotoTraseiraBase64 = await processImageUrl(fullLaudo.fotoTraseiraUrl);
   console.log('📷 Foto traseira processada:', !!fotoTraseiraBase64);
-  
+
   const fotoChassiBase64 = await processImageUrl(fullLaudo.fotoChassiUrl);
   console.log('📷 Foto chassi processada:', !!fotoChassiBase64);
 
@@ -355,19 +774,19 @@ async function generateChecklistHTML(fullLaudo: Laudo & { client: Client; vehicl
   const pneuSvgBase64 = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8IS0tIENpcmN1bG8gZXh0ZXJubyBkbyBwbmV1IC0tPgogIDxjaXJjbGUgY3g9IjMwIiBjeT0iMzAiIHI9IjI4IiBmaWxsPSIjMWExYTFhIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDwhLS0gQ2lyY3VsbyBpbnRlcm5vIC0tPgogIDxjaXJjbGUgY3g9IjMwIiBjeT0iMzAiIHI9IjIyIiBmaWxsPSIjMmEyYTJhIiBzdHJva2U9IiM0NDQiIHN0cm9rZS13aWR0aD0iMSIvPgogIDwhLS0gUGFkcsOjbyBkZSBzdWxjb3MgZG8gcG5ldSAtLT4KICA8ZyBzdHJva2U9IiM1NTUiIHN0cm9rZS13aWR0aD0iMSIgZmlsbD0ibm9uZSI+CiAgICA8cGF0aCBkPSJNIDEwIDMwIFEgMzAgMjAgNTAgMzAiLz4KICAgIDxwYXRoIGQ9Ik0gMTAgMzAgUSAzMCA0MCA1MCAzMCIvPgogICAgPHBhdGggZD0iTSAzMCA4IFEgMjAgMzAgMzAgNTIiLz4KICAgIDxwYXRoIGQ9Ik0gMzAgOCBRIDQwIDMwIDMwIDUyIi8+CiAgPC9nPgogIDwhLS0gQ2VudHJvIGRvIHBuZXUgLS0+CiAgPGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMTUiIGZpbGw9IiMzMzMiIHN0cm9rZT0iIzU1NSIgc3Ryb2tlLXdpZHRoPSIxIi8+Cjwvc3ZnPg==';
 
   // Funções helper para renderização
-  const renderCheckbox = (value: string) => {
-    if (value === 'OK') return '✓';
-    if (value === 'NOK') return '✗';
-    if (value === 'NA') return 'N.A';
-    return '';
-  };
-
   const renderField = (label: string, field: string) => {
     const value = checklistData[field] || '';
-    const cssClass = value === 'OK' ? 'ok' : value === 'NOK' ? 'nok' : 'na';
+    const okActive = value === 'OK' ? 'chip-active chip-ok' : 'chip-inactive';
+    const nokActive = value === 'NOK' ? 'chip-active chip-nok' : 'chip-inactive';
+    const naActive = value === 'NA' ? 'chip-active chip-na' : 'chip-inactive';
     return `
-      <div class="field">
-        ${label} <span class="checkbox ${cssClass}">${renderCheckbox(value)}</span>
+      <div class="field-row">
+        <span class="field-label">${label}</span>
+        <span class="chip-group">
+          <span class="chip ${okActive}">✓</span>
+          <span class="chip ${nokActive}">✗</span>
+          <span class="chip ${naActive}">N.A</span>
+        </span>
       </div>
     `;
   };
@@ -429,14 +848,14 @@ async function generateChecklistHTML(fullLaudo: Laudo & { client: Client; vehicl
         .company-header {
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 4px;
+            justify-content: flex-start;
+            gap: 6px;
             margin-bottom: 1.5px;
         }
         
         .header-logo {
-            max-height: 30px;
-            max-width: 80px;
+            max-height: 50px;
+            max-width: 130px;
             object-fit: contain;
         }
         
@@ -502,61 +921,75 @@ async function generateChecklistHTML(fullLaudo: Laudo & { client: Client; vehicl
         
         .column {
             border: 0.5px solid #ccc;
-            padding: 1.5px;
+            padding: 3px;
         }
-        
-        .field {
-            margin-bottom: 1px;
-            padding: 1px;
-            font-size: 11px;
-            line-height: 1.2;
-        }
-        
-        .field .label {
-            display: inline;
-            font-size: 11px;
-        }
-        
-        .field .checkbox {
-            display: inline;
-            width: 16px;
-            height: 16px;
-            font-size: 11px;
-            line-height: 14px;
-            margin-left: 3px;
-            vertical-align: middle;
-        }
-        
-        .field-text {
-            margin-bottom: 1px;
-            padding: 1px;
-        }
-        
-        .field-text .value {
-            font-weight: bold;
-            font-size: 11px;
-        }
-        
-        .label {
-            flex-grow: 1;
-            font-size: 11px;
-            line-height: 1.2;
-        }
-        
-        .checkbox {
-            width: 12px;
-            height: 12px;
-            border: 0.5px solid #000;
-            display: inline-block;
-            text-align: center;
+
+        /* NOVO LAYOUT: cada field é uma linha label+chips alinhada à direita */
+        .field-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 4px;
+            padding: 1px 2px;
             font-size: 9px;
-            line-height: 10px;
-            margin-left: 2px;
+            line-height: 1.2;
+            border-bottom: 0.3px dotted #ddd;
         }
-        
-        .ok { background: #90EE90; }
-        .nok { background: #FFB6C1; }
-        .na { background: #E6E6FA; }
+        .field-row:last-child { border-bottom: none; }
+
+        .field-label {
+            flex: 1 1 auto;
+            font-size: 9px;
+            line-height: 1.15;
+            padding-right: 2px;
+        }
+
+        .chip-group {
+            flex: 0 0 auto;
+            display: inline-flex;
+            gap: 2px;
+            white-space: nowrap;
+        }
+
+        .chip {
+            display: inline-block;
+            min-width: 14px;
+            height: 11px;
+            line-height: 11px;
+            font-size: 8px;
+            font-weight: bold;
+            text-align: center;
+            padding: 0 3px;
+            border: 0.5px solid #999;
+            border-radius: 2px;
+            color: #999;
+            background: #fff;
+        }
+        .chip-active.chip-ok  { background: #2ea84a; color: #fff; border-color: #1e7a32; }
+        .chip-active.chip-nok { background: #d62828; color: #fff; border-color: #8a1a1a; }
+        .chip-active.chip-na  { background: #555;    color: #fff; border-color: #333;    }
+        .chip-inactive { color: #c0c0c0; border-color: #d8d8d8; }
+
+        .field-text {
+            display: flex;
+            justify-content: space-between;
+            gap: 4px;
+            padding: 1px 2px;
+            font-size: 9px;
+            line-height: 1.2;
+            border-bottom: 0.3px dotted #ddd;
+        }
+        .field-text .label,
+        .field-text > span:first-child {
+            flex: 1 1 auto;
+            font-size: 9px;
+        }
+        .field-text .value {
+            flex: 0 0 auto;
+            font-weight: bold;
+            font-size: 9px;
+            color: #000;
+        }
         
         .subsection-title {
             font-weight: bold;
@@ -566,10 +999,10 @@ async function generateChecklistHTML(fullLaudo: Laudo & { client: Client; vehicl
             line-height: 1.1;
         }
         
-        /* MEDIÇÃO DOS PNEUS - COMPACTA PARA PÁGINA ÚNICA */
+        /* MEDIÇÃO DOS PNEUS - COMPACTA PARA PÁGINA Única */
         .measurement-section {
-          border: 1px solid #000;
-          margin: 1px 0;
+          border: 0.5px solid #000;
+          margin: 2px 0;
           padding: 2px;
           font-size: 8px;
           background: #f8f8f8;
@@ -585,145 +1018,54 @@ async function generateChecklistHTML(fullLaudo: Laudo & { client: Client; vehicl
           color: #000;
         }
 
-        .measurement-header {
-          display: grid;
-          grid-template-columns: 1fr 1fr 1fr;
-          gap: 1px;
-          margin-bottom: 2px;
-          font-size: 7px;
+        /* TABELA DE PNEUS - largura fixa por coluna, legível */
+        .tire-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 10px;
+          table-layout: fixed;
         }
-
-        .header-field {
-          border: 1px solid #000;
-          padding: 1px;
+        .tire-table th, .tire-table td {
+          border: 0.5px solid #555;
           text-align: center;
-          background: #e0e0e0;
-          font-weight: bold;
+          padding: 4px 4px;
+          line-height: 1.3;
+          word-break: keep-all;
         }
-
-        /* GRID SIMPLIFICADO - LAYOUT COMPACTO PARA PÁGINA ÚNICA */
-        .measurement-grid-simplified {
-          display: grid;
-          grid-template-columns: 1fr 2fr 2fr 1fr;
-          gap: 1px;
-          border: 1px solid #000;
-          font-size: 7px;
-          background: white;
-          padding: 1px;
-        }
-
-        .label-compact {
-          padding: 1px;
-          text-align: center;
-          border: 1px solid #ccc;
-          background: #f5f5f5;
-          font-size: 8px;
-          line-height: 1.0;
-          font-weight: bold;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          min-height: 24px;
-        }
-
-        .measurement-grid-simplified .header {
+        .tire-table th {
           background: #d0d0d0;
-          border: 1px solid #000;
-          padding: 1px;
           font-weight: bold;
+          font-size: 9px;
+        }
+        .tire-table .subhead {
+          background: #ececec;
+          font-weight: 600;
           font-size: 8px;
-          text-align: center;
         }
-
-        .measurement-grid-simplified .value {
-          border: 1px solid #ccc;
-          padding: 2px;
-          min-height: 24px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 7px;
+        .tire-table .row-label {
+          background: #e8e8e8;
+          font-weight: bold;
+          font-size: 9px;
+          width: 36px;
+        }
+        .tire-table .tire-cell {
           background: white;
+          font-size: 10px;
+          font-weight: bold;
+          min-width: 38px;
         }
+        .tire-cell.na { color: #666; }
+        .tire-cell.nao { color: #c00; }
 
         .measurement-footer-compact {
           display: flex;
           justify-content: center;
-          gap: 10px;
-          margin-top: 2px;
-          font-size: 6px;
-          padding: 1px;
-          background: #f0f0f0;
-          border: 1px solid #ccc;
-        }
-
-        /* Estilos para pneus EXPANDIDOS PARA MELHOR LEGIBILIDADE */
-        .pneu-value {
-          width: 26px;
-          height: 26px;
-          border-radius: 50%;
-          background-image: url('${pneuSvgBase64}');
-          background-size: cover;
-          background-position: center;
-          background-repeat: no-repeat;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 8px;
-          font-weight: bold;
-          color: #000;
-          margin: 2px;
-          position: relative;
-          border: 1px solid #333;
-        }
-
-        .pneu-value::before {
-          content: '';
-          position: absolute;
-          width: 16px;
-          height: 16px;
-          background: rgba(255, 255, 255, 0.95);
-          border-radius: 50%;
-          z-index: 1;
-        }
-
-        .pneu-value span {
-          position: relative;
-          z-index: 2;
-          font-weight: bold;
-          color: #000;
-          font-size: 8px;
-        }
-
-        .par-values {
-          display: flex;
-          gap: 3px;
-          align-items: center;
-          justify-content: center;
-          border: 1px solid #ccc;
+          gap: 14px;
+          margin-top: 3px;
+          font-size: 9px;
           padding: 3px;
-        }
-
-        .single-value {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border: 1px solid #ccc;
-          padding: 3px;
-        }
-
-        .measurement-footer {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 2px;
-          margin-top: 2px;
-          font-size: 7px;
-        }
-
-        .footer-field {
-          border: 1px solid #000;
-          padding: 2px;
           background: #f0f0f0;
+          border: 0.5px solid #ccc;
         }
         
         /* SEÇÃO FINAL UNIFICADA - LAYOUT 2 COLUNAS EXPANDIDA */
@@ -818,10 +1160,14 @@ async function generateChecklistHTML(fullLaudo: Laudo & { client: Client; vehicl
             filter: grayscale(100%);
         }
         
-        /* FORÇAR PÁGINA ÚNICA E CENTRALIZAÇÃO */
-        * {
+        /* QUEBRA DE PÁGINA: mantém linhas/blocos íntegros, permite fluir para a 2ª página */
+        .field-row, .field-text, .chip-group, tr {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
+        }
+        .page-2-break {
+            page-break-before: always !important;
+            break-before: page !important;
         }
         
         .page {
@@ -842,15 +1188,18 @@ async function generateChecklistHTML(fullLaudo: Laudo & { client: Client; vehicl
                 max-width: 200mm !important;
                 padding: 2mm !important;
             }
-            * {
+            .field-row, .field-text, .chip-group, tr {
                 break-inside: avoid !important;
                 page-break-inside: avoid !important;
             }
             .measurement-section,
-            .final-unified-section,
-            .items-container {
+            .final-unified-section {
                 break-inside: avoid !important;
                 page-break-inside: avoid !important;
+            }
+            .page-2-break {
+                page-break-before: always !important;
+                break-before: page !important;
             }
             /* MARCA D'ÁGUA PARA IMPRESSÃO - PADRÃO LIT */
             .logo-watermark-main {
@@ -1012,11 +1361,16 @@ async function generateChecklistHTML(fullLaudo: Laudo & { client: Client; vehicl
                     <div class="subsection-title">Sistema de Escapamento</div>
                     ${renderField('Integridade', 'motor_sistemaEscapamento')}
                     ${renderField('Silenciosos (Produtos da Classe 3)', 'motor_integridade')}
+                    ${renderField('Contra de Segurança (Proteção Classe A)', 'motor_contraSeguranca')}
                     
                     <div class="subsection-title">Chassi</div>
                     ${renderField('Estacionamento, Freios, Reparo', 'motor_estacionamento')}
                     ${renderField('Proteção Pino do Arlinhão, do Chassi', 'motor_protecaoPino')}
                     ${renderField('Limite de Operacidade', 'motor_limiteOperacidade')}
+                    ${renderField('Chassi', 'motor_chassi')}
+                    ${renderField('Estado da Articulação, Configuração', 'motor_estadoArticulacao')}
+                    ${renderField('Rastreamento', 'motor_rastreamento')}
+                    ${renderField('Posição de Fixação', 'motor_posicaoFixacao')}
                     
                     <div class="subsection-title">Sistema de Iluminação</div>
                     ${renderField('Farol Principal', 'iluminacao_farolPrincipal')}
@@ -1034,6 +1388,16 @@ async function generateChecklistHTML(fullLaudo: Laudo & { client: Client; vehicl
                     ${renderField('Luz Marcha-à-Ré', 'iluminacao_marchaRe')}
                     ${renderField('Luz de Identificação', 'iluminacao_identificacao')}
                     ${renderField('Luz de Emergência', 'iluminacao_emergencia')}
+                    ${renderField('Farol de Neblina', 'iluminacao_farolNeblina')}
+                    ${renderField('Lanterna de Luz/Cor Branca', 'iluminacao_lanternaLuz')}
+                    ${renderField('Lanterna Delimitadora', 'iluminacao_lanternaDelimitadora')}
+                    ${renderField('Lanterna Indicadora de Direção', 'iluminacao_lanternaIndicadora')}
+                    ${renderField('Lanterna Indic. Direção Lateral', 'iluminacao_lanternaIndicadoraLateral')}
+                    ${renderField('Lanterna de Advertência', 'iluminacao_lanternaAdvertencia')}
+                    ${renderField('Lanternas Laterais', 'iluminacao_lanternaLaterais')}
+                    ${renderField('Lanterna Lateral à Ré', 'iluminacao_lanternaLateralRe')}
+                    ${renderField('Lanterna de Neblina Traseira', 'iluminacao_lanternaNeblina')}
+                    ${renderField('Lanterna de Projeção', 'iluminacao_lanternaProjecao')}
                 </div>
 
                 <!-- COLUNA 3: Eixos, Suspensão, Rodas, Pneus e Sistemas Especiais -->
@@ -1103,137 +1467,168 @@ async function generateChecklistHTML(fullLaudo: Laudo & { client: Client; vehicl
             </div>
         </div>
 
-        <!-- SISTEMAS ELÉTRICOS E ESPECIAIS EXPANDIDOS -->
-        <div style="margin: 2px 0; font-size: 6px;">
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;">
-                ${renderField('Cronotacógrafo', 'cronografo_funcionamento')}
-                ${renderField('Buzina', 'buzina_existenciaFuncionamento')}
-                ${renderField('Limpador Para-Brisa', 'limpador_operacionalidade')}
-                ${renderField('Integridade Limpador', 'limpador_integridadeOperacionalidade')}
+        <!-- ===== PÁGINA 2: SISTEMAS ELÉTRICOS E SEÇÕES ESPECIAIS ===== -->
+        <div class="items-container page-2-break" style="margin-top: 2px;">
+            <div class="items-title">ITENS INSPECIONADOS (continuação)</div>
+            <div class="items-grid">
+                <!-- COLUNA A: Elétricos e instrumentos -->
+                <div class="column">
+                    <div class="subsection-title">Bateria Elétrica</div>
+                    ${renderField('Integridade e Fixação', 'bateria_integridadeFixacao')}
+                    ${renderField('Alteração da Proteção', 'bateria_alteracaoProtecao')}
+
+                    <div class="subsection-title">Cronotacógrafo</div>
+                    ${renderField('Laces', 'cronografo_laces')}
+                    ${renderField('Funcionamento, Ligação Elétrica', 'cronografo_funcionamento')}
+
+                    <div class="subsection-title">Buzina Elétrica</div>
+                    ${renderField('Existência e Funcionamento', 'buzina_existenciaFuncionamento')}
+
+                    <div class="subsection-title">Instalação Elétrica</div>
+                    ${renderField('Estado dos Cabos Elétrica', 'eletrica_estadoCabosEletrica')}
+                    ${renderField('Isolamento da Fiação', 'eletrica_isolamento')}
+
+                    <div class="subsection-title">Limpador de Para-Brisa</div>
+                    ${renderField('Operacionalidade', 'limpador_operacionalidade')}
+                    ${renderField('Integridade e Operacionalidade', 'limpador_integridadeOperacionalidade')}
+                </div>
+
+                <!-- COLUNA B: Comunicação, alarme, para-choque, refletivos -->
+                <div class="column">
+                    <div class="subsection-title">Sistema de Comunicação e Elétricos</div>
+                    ${renderField('Retrorefletores', 'comunicacao_retrorefletores')}
+                    ${renderField('Bateria: Integridade', 'eletricos_bateriaIntegridade')}
+                    ${renderField('Fiação: Integridade', 'eletricos_fiacaoIntegridade')}
+                    ${renderField('Fiação: Fixação', 'eletricos_fiacaoFixacao')}
+                    ${renderTextField('Largura', 'eletricos_largura')}
+                    ${renderField('Funcionamento', 'eletricos_funcionamento')}
+                    ${renderField('Ligação Elétrica', 'eletricos_ligacaoEletrica')}
+                    ${renderField('Estado da Fiação Elétrica', 'eletricos_estadoFiacao')}
+
+                    <div class="subsection-title">Sistema de Alarme de Ré</div>
+                    ${renderField('Funcionamento', 'alarmeRe_funcionamento')}
+                    ${renderField('Estado da Fiação Elétrica', 'alarmeRe_estadoFiacao')}
+
+                    <div class="subsection-title">Para-Choque Traseiro</div>
+                    ${renderField('Listas (Zebradas)', 'paraChoque_listas')}
+                    ${renderField('Furos', 'paraChoque_furos')}
+                    ${renderField('Integridade', 'paraChoque_integridade')}
+                    ${renderField('Visibilidade da Placa', 'paraChoque_visibilidadePlaca')}
+
+                    <div class="subsection-title">Para-Lama</div>
+                    ${renderField('Integridade', 'paraLama_integridade')}
+
+                    <div class="subsection-title">Dispositivos Refletivos de Segurança</div>
+                    ${renderField('Existência', 'refletivos_existencia')}
+                    ${renderField('Integridade', 'refletivos_integridade')}
+                    ${renderField('Conservação', 'refletivos_conservacao')}
+                </div>
+
+                <!-- COLUNA C: Contêiner, dolly, semi-reboque, quinta-roda, pino-rei, engate -->
+                <div class="column">
+                    <div class="subsection-title">Veículo Chassi Porta-Contêiner</div>
+                    ${renderField('Atendimento à Res. Contran 725/18', 'chassiContainer_atendimentoRes725')}
+                    ${renderField('Dispositivos de Fixação Operacionais', 'chassiContainer_dispositivosFixacao')}
+
+                    <div class="subsection-title">Dolly</div>
+                    ${renderField('Estado do Câmbio', 'dolly_estadoCambio')}
+
+                    <div class="subsection-title">Pinos de Ação do Semi-Reboque</div>
+                    ${renderField('Integridade', 'pinosSemi_integridade')}
+                    ${renderField('Operacionalidade', 'pinosSemi_operacionalidade')}
+                    ${renderField('Vazamentos', 'pinosSemi_vazamentos')}
+                    ${renderField('Fixação', 'pinosSemi_fixacao')}
+
+                    <div class="subsection-title">Quinta-Roda</div>
+                    ${renderField('Integridade', 'quintaRoda_integridade')}
+                    ${renderField('Fixação', 'quintaRoda_fixacao')}
+                    ${renderField('Estado dos Apoios', 'quintaRoda_estadoApoios')}
+                    ${renderField('Funcionamento Mecânico do Engate', 'quintaRoda_funcionamentoEngate')}
+
+                    <div class="subsection-title">Pino-Rei</div>
+                    ${renderField('Fixação Vertical à Mesa', 'pinoRei_fixacaoVertical')}
+                    ${renderTextField('Diâmetro em mm', 'pinoRei_diametroMm')}
+                    ${renderField('Trincas Observáveis', 'pinoRei_trincas')}
+                    ${renderField('Deformado', 'pinoRei_deformado')}
+                    ${renderField('Recuperado por Solda', 'pinoRei_recuperadoSolda')}
+
+                    <div class="subsection-title">Conjunto de Engate</div>
+                    ${renderField('Estado da Rótula', 'engate_estadoRotula')}
+                    ${renderField('Trava de Segurança', 'engate_travaSeguranca')}
+                    ${renderField('Integridade dos Pinos', 'engate_integridadePinos')}
+                    ${renderField('Trava dos Pinos', 'engate_travaPinos')}
+                </div>
             </div>
         </div>
 
-        <!-- SEÇÕES ESPECIAIS EM GRADE EXPANDIDA -->
-        <div style="margin: 2px 0; font-size: 6px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px;">
-            ${renderField('Sistema Alarme Ré', 'alarmeRe_funcionamento')}
-            ${renderField('Para-Choque Traseiro', 'paraChoque_integridade')}
-            ${renderField('Para-Lama', 'paraLama_integridade')}
-            ${renderField('Dispositivos Refletivos', 'refletivos_integridade')}
-            ${renderField('Chassi Porta-Contêiner', 'chassiContainer_atendimentoRes725')}
-            ${renderField('Dolly', 'dolly_estadoCambio')}
-            ${renderField('Pinos Semi-Reboque', 'pinosSemi_integridade')}
-            ${renderField('Quinta-Roda', 'quintaRoda_integridade')}
-            ${renderField('Pino-Rei', 'pinoRei_fixacaoVertical')}
-            ${renderField('Conjunto de Engate', 'engate_estadoRotula')}
-        </div>
+        <!-- (seções especiais e campos de texto movidos para o container da página 2 acima) -->
 
-        <!-- CAMPOS DE TEXTO ADICIONAIS EXPANDIDOS -->
-        <div style="margin: 2px 0; font-size: 6px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px;">
-            ${renderTextField('Largura Elétrico', 'eletricos_largura')}
-            ${renderTextField('Diâmetro Pino-Rei (mm)', 'pinoRei_diametroMm')}
-        </div>
-
-        <!-- MEDIÇÃO DOS PNEUS - LAYOUT ULTRA SIMPLIFICADO -->
+        <!-- MEDIÇÃO DOS PNEUS - TABELA COMPACTA DE TEXTO -->
         <div class="measurement-section">
           <div class="measurement-title">Medição dos Pneus</div>
-          
-          <!-- Grid simplificado - apenas posições e pneus -->
-          <div class="measurement-grid-simplified">
-            <!-- Cabeçalhos -->
-            <div></div>
-            <div class="header">ESQUERDA</div>
-            <div class="header">DIREITA</div>
-            <div></div>
-            
-            <!-- LINHA 1 - Dianteiro -->
-            <div class="label-compact">D1</div>
-            <div class="single-value">
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha1_esquerdo)}</span>
-              </div>
-            </div>
-            <div class="single-value">
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha1_direito)}</span>
-              </div>
-            </div>
-            <div class="label-compact">D1</div>
-            
-            <!-- LINHA 2 - Dianteiro 2 -->
-            <div class="label-compact">D2</div>
-            <div class="single-value">
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha2_esquerdo, 'X')}</span>
-              </div>
-            </div>
-            <div class="single-value">
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha2_direito, 'X')}</span>
-              </div>
-            </div>
-            <div class="label-compact">D2</div>
-            
-            <!-- LINHA 3 - Traseiro 1 -->
-            <div class="label-compact">T1</div>
-            <div class="par-values">
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha3_esquerdo1)}</span>
-              </div>
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha3_esquerdo2)}</span>
-              </div>
-            </div>
-            <div class="par-values">
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha3_direito1)}</span>
-              </div>
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha3_direito2)}</span>
-              </div>
-            </div>
-            <div class="label-compact">T1</div>
-            
-            <!-- LINHA 4 - Traseiro 2 -->
-            <div class="label-compact">T2</div>
-            <div class="par-values">
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha4_esquerdo1)}</span>
-              </div>
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha4_esquerdo2)}</span>
-              </div>
-            </div>
-            <div class="par-values">
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha4_direito1)}</span>
-              </div>
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha4_direito2)}</span>
-              </div>
-            </div>
-            <div class="label-compact">T2</div>
-            
-            <!-- LINHA 5 - Traseiro 3 -->
-            <div class="label-compact">T3</div>
-            <div class="par-values">
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha5_esquerdo1)}</span>
-              </div>
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha5_esquerdo2)}</span>
-              </div>
-            </div>
-            <div class="par-values">
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha5_direito1)}</span>
-              </div>
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha5_direito2)}</span>
-              </div>
-            </div>
-            <div class="label-compact">T3</div>
-          </div>
-          
+          <table class="tire-table">
+            <thead>
+              <tr>
+                <th class="row-label" rowspan="2">EIXO</th>
+                <th colspan="2">ESQUERDA</th>
+                <th colspan="2">DIREITA</th>
+              </tr>
+              <tr>
+                <th class="subhead">EXT</th>
+                <th class="subhead">INT</th>
+                <th class="subhead">INT</th>
+                <th class="subhead">EXT</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- D1 - Dianteiro único -->
+              <tr>
+                <td class="row-label">D1</td>
+                <td class="tire-cell" colspan="2">${mapMedicaoValue(checklistData.medicao_linha1_esquerdo)}</td>
+                <td class="tire-cell" colspan="2">${mapMedicaoValue(checklistData.medicao_linha1_direito)}</td>
+              </tr>
+              <!-- D2 - Dianteiro duplo (par) -->
+              <tr>
+                <td class="row-label">D2</td>
+                <td class="tire-cell">${mapMedicaoValue(checklistData.medicao_linha2_esquerdo1)}</td>
+                <td class="tire-cell">${mapMedicaoValue(checklistData.medicao_linha2_esquerdo2)}</td>
+                <td class="tire-cell">${mapMedicaoValue(checklistData.medicao_linha2_direito1)}</td>
+                <td class="tire-cell">${mapMedicaoValue(checklistData.medicao_linha2_direito2)}</td>
+              </tr>
+              <!-- T1 - Traseiro par -->
+              <tr>
+                <td class="row-label">T1</td>
+                <td class="tire-cell">${mapMedicaoValue(checklistData.medicao_linha3_esquerdo1)}</td>
+                <td class="tire-cell">${mapMedicaoValue(checklistData.medicao_linha3_esquerdo2)}</td>
+                <td class="tire-cell">${mapMedicaoValue(checklistData.medicao_linha3_direito1)}</td>
+                <td class="tire-cell">${mapMedicaoValue(checklistData.medicao_linha3_direito2)}</td>
+              </tr>
+              <!-- T2 - Traseiro par -->
+              <tr>
+                <td class="row-label">T2</td>
+                <td class="tire-cell">${mapMedicaoValue(checklistData.medicao_linha4_esquerdo1)}</td>
+                <td class="tire-cell">${mapMedicaoValue(checklistData.medicao_linha4_esquerdo2)}</td>
+                <td class="tire-cell">${mapMedicaoValue(checklistData.medicao_linha4_direito1)}</td>
+                <td class="tire-cell">${mapMedicaoValue(checklistData.medicao_linha4_direito2)}</td>
+              </tr>
+              <!-- T3 - Traseiro par -->
+              <tr>
+                <td class="row-label">T3</td>
+                <td class="tire-cell">${mapMedicaoValue(checklistData.medicao_linha5_esquerdo1)}</td>
+                <td class="tire-cell">${mapMedicaoValue(checklistData.medicao_linha5_esquerdo2)}</td>
+                <td class="tire-cell">${mapMedicaoValue(checklistData.medicao_linha5_direito1)}</td>
+                <td class="tire-cell">${mapMedicaoValue(checklistData.medicao_linha5_direito2)}</td>
+              </tr>
+              <!-- D3 - Dianteiro 3 (par) -->
+              <tr>
+                <td class="row-label">D3</td>
+                <td class="tire-cell">${mapMedicaoValue(checklistData.medicao_linha6_esquerdo1)}</td>
+                <td class="tire-cell">${mapMedicaoValue(checklistData.medicao_linha6_esquerdo2)}</td>
+                <td class="tire-cell">${mapMedicaoValue(checklistData.medicao_linha6_direito1)}</td>
+                <td class="tire-cell">${mapMedicaoValue(checklistData.medicao_linha6_direito2)}</td>
+              </tr>
+            </tbody>
+          </table>
           <!-- Info compacta inline -->
           <div class="measurement-footer-compact">
             <span><strong>Modelo:</strong> ${checklistData.medicao_modelo || '275/80 R 22.5'}</span> |
@@ -1303,8 +1698,15 @@ async function generateChecklistHTML(fullLaudo: Laudo & { client: Client; vehicl
         </div>
         ` : ''}
 
-        <div style="text-align: center; font-size: 6px; margin-top: 2px;">
-            Documento gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')} - Sistema GTS
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 6px; padding: 5px 6px; border-top: 0.5px solid #ccc; gap: 8px;">
+            <div style="flex: 1; line-height: 1.35;">
+                <div style="font-size: 8px; color: #444; margin-bottom: 2px;">Documento gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')} - Sistema GTS</div>
+                <div style="font-size: 7px; color: #555; font-family: monospace; word-break: break-all;">${documentHash ? `SHA-256: ${documentHash.substring(0, 40)}...` : ''}</div>
+                <div style="font-size: 7px; color: #444; margin-top: 2px;">${documentHash ? `Verifique autenticidade em: generalinspetor.terpens.com.br/verificar/${documentHash}` : ''}</div>
+            </div>
+            ${qrCodeSvg ? `<div style="width: 64px; height: 64px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+                <div style="width: 60px; height: 60px;">${qrCodeSvg}</div>
+            </div>` : ''}
         </div>
     </div>
 </body>
@@ -1321,29 +1723,56 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ID do laudo é obrigatório' }, { status: 400 });
     }
 
-    // Buscar configurações admin
-    const adminSettingsRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/admin/settings`);
-    if (!adminSettingsRes.ok) {
-      return NextResponse.json({ error: 'Falha ao buscar configurações admin' }, { status: 500 });
+    // Multi-tenancy: buscar adminSettings pelo userId do inspetor logado
+    const session = getSessionFromRequest(request);
+    const userIdFilter = session && session.role !== 'admin' ? session.id : null;
+    let adminSettings: AdminSetting | null = await prisma.adminSetting.findFirst({
+      where: { userId: userIdFilter },
+    });
+    if (!adminSettings) {
+      adminSettings = await prisma.adminSetting.create({
+        data: { companyName: 'Your Company Name', reportTitle: 'LAUDO DE INSPEÇÃO TÉCNICA', userId: userIdFilter }
+      });
     }
-    const adminSettings: AdminSetting = await adminSettingsRes.json();
 
     let htmlContent: string;
     let filename: string;
 
     // Verificar se é laudo de ruído
     if (type === 'ruido') {
-      htmlContent = await generateRuidoPDF(laudoId, adminSettings);
-      filename = `laudo-ruido-${laudoId}.pdf`;
+      // Buscar dados básicos para o hash
+      const laudoBase = await prisma.laudo.findUnique({
+        where: { id: laudoId },
+        include: { vehicle: true },
+      });
+      const { hash: docHash, qrCodeSvg } = laudoBase
+        ? await getOrCreateLaudoHash(laudoId, laudoBase.vehicle.placa, laudoBase.dataEmissao, 'RUIDO')
+        : { hash: '', qrCodeSvg: '' };
+
+      htmlContent = await generateRuidoPDF(laudoId, adminSettings, qrCodeSvg, docHash);
+      filename = `laudo-ruido-${laudoBase?.ordemServico || laudoId}.pdf`;
     } else {
-      // Lógica existente para laudo de checklist
-      const laudoDetailsRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/laudos/${laudoId}`);
-      if (!laudoDetailsRes.ok) {
-        return NextResponse.json({ error: 'Falha ao buscar dados do laudo' }, { status: 500 });
+      // Buscar laudo (LIT ou Checklist) DIRETAMENTE do banco (sem fetch HTTP)
+      const fullLaudo = await prisma.laudo.findUnique({
+        where: { id: laudoId },
+        include: { client: true, vehicle: true },
+      }) as (Laudo & { client: Client; vehicle: Vehicle }) | null;
+      if (!fullLaudo) {
+        return NextResponse.json({ error: 'Laudo não encontrado' }, { status: 404 });
       }
-      const fullLaudo: Laudo & { client: Client; vehicle: Vehicle } = await laudoDetailsRes.json();
-      filename = `laudo-checklist-${fullLaudo.ordemServico}.pdf`;
-      htmlContent = await generateChecklistHTML(fullLaudo, adminSettings);
+
+      const { hash: docHash, qrCodeSvg } = await getOrCreateLaudoHash(
+        laudoId, fullLaudo.vehicle.placa, fullLaudo.dataEmissao, fullLaudo.laudoType
+      );
+
+      // Rotear para o template correto baseado no tipo do laudo
+      if (type === 'lit' || fullLaudo.laudoType === 'LIT') {
+        filename = `laudo-lit-${fullLaudo.ordemServico}.pdf`;
+        htmlContent = await generateLitHTML(fullLaudo, adminSettings, qrCodeSvg, docHash);
+      } else {
+        filename = `laudo-checklist-${fullLaudo.ordemServico}.pdf`;
+        htmlContent = await generateChecklistHTML(fullLaudo, adminSettings, qrCodeSvg, docHash);
+      }
     }
 
     // Se o formato solicitado for HTML, retornar HTML diretamente
@@ -1368,30 +1797,30 @@ export async function POST(request: NextRequest) {
 
     console.log('📄 Criando nova página...');
     const page = await browser.newPage();
-    
+
     // Adicionar tratamento de erro para página
     page.on('error', (error) => {
       console.error('❌ Erro na página:', error);
     });
-    
+
     page.on('pageerror', (error) => {
       console.error('❌ Erro de JavaScript na página:', error);
     });
-    
+
     console.log('🔧 Configurando viewport...');
     await page.setViewport({ width: 794, height: 1123 }); // A4 em pixels
-    
+
     console.log('📄 Carregando HTML content...');
     await page.setContent(htmlContent, {
       waitUntil: 'domcontentloaded',
       timeout: 60000
     });
-    
+
     console.log('⏳ Aguardando estabilização da página...');
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
+
     console.log('📑 Gerando PDF...');
-    
+
     // Configurações específicas por tipo de laudo
     let pdfBuffer: Uint8Array;
     if (type === 'ruido') {
@@ -1410,21 +1839,36 @@ export async function POST(request: NextRequest) {
         scale: 0.95,
         pageRanges: '1'
       });
-    } else {
-      // Configurações ULTRA COMPACTAS para checklist - PÁGINA ÚNICA
+    } else if (type === 'lit' || (type !== 'ruido' && type !== 'checklist')) {
+      // Configurações para laudo LIT
       pdfBuffer = await page.pdf({
         format: 'A4' as const,
         printBackground: true,
         margin: {
-          top: '1mm',      // Margem MÍNIMA ABSOLUTA
-          right: '1mm',    // Margem MÍNIMA ABSOLUTA
-          bottom: '1mm',   // Margem MÍNIMA ABSOLUTA
-          left: '1mm'      // Margem MÍNIMA ABSOLUTA
+          top: '2mm',
+          right: '2mm',
+          bottom: '2mm',
+          left: '2mm'
         },
         preferCSSPageSize: false,
         displayHeaderFooter: false,
-        scale: 0.75,       // Scale MUITO reduzido para caber TUDO
-        pageRanges: '1'    // FORÇA apenas primeira página
+        scale: 0.90,
+        pageRanges: '1'
+      });
+    } else {
+      // Configurações OTIMIZADAS para checklist - melhor aproveitamento da página
+      pdfBuffer = await page.pdf({
+        format: 'A4' as const,
+        printBackground: true,
+        margin: {
+          top: '2mm',
+          right: '2mm',
+          bottom: '2mm',
+          left: '2mm'
+        },
+        preferCSSPageSize: false,
+        displayHeaderFooter: false,
+        scale: 0.82      // 2 páginas: conteúdo flui naturalmente (sem pageRanges, nada é cortado)
       });
     }
 
@@ -1432,7 +1876,7 @@ export async function POST(request: NextRequest) {
     await browser.close();
 
     // Retornar PDF como resposta
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(Buffer.from(pdfBuffer), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`
@@ -1442,7 +1886,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('❌ Erro ao gerar PDF:', error);
     console.error('❌ Detalhes do erro:', error instanceof Error ? error.message : 'Erro desconhecido');
-    
+
     return NextResponse.json({
       error: 'Falha ao gerar PDF',
       details: error instanceof Error ? error.message : 'Erro desconhecido'
