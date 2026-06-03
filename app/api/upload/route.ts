@@ -33,7 +33,9 @@ export async function POST(req: NextRequest) {
 
     console.log(`File uploaded to: ${filePath}`);
 
-    const publicPath = `/uploads/${filename}`;
+    // Use /api/uploads/ path so files are served dynamically via API route.
+    // Next.js `next start` (production) does NOT serve files added to public/ after build.
+    const publicPath = `/api/uploads/${filename}`;
     return NextResponse.json({ success: true, url: publicPath });
 
   } catch (error) {

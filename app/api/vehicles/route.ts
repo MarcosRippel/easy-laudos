@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    
+
     console.log('🔍 DADOS RECEBIDOS PARA CRIAR VEÍCULO:');
     console.log(JSON.stringify(body, null, 2));
 
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
         clientId: body.clientId,
       },
     });
-    
+
     console.log('✅ VEÍCULO CRIADO:');
     console.log(JSON.stringify(newVehicle, null, 2));
 
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
       headers: { 'Content-Type': 'application/json' },
     });
 
-  }catch (error) {
+  } catch (error) {
     console.error('Failed to create vehicle:', error);
 
     if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
@@ -90,6 +90,22 @@ export async function DELETE(request: NextRequest) {
 
     console.log('🗑️ DELETANDO VEÍCULO:', vehicleId);
 
+    // Buscar laudos vinculados ao veículo
+    const laudos = await prisma.laudo.findMany({
+      where: { vehicleId },
+      select: { id: true },
+    });
+    const laudoIds = laudos.map(l => l.id);
+
+    if (laudoIds.length > 0) {
+      // Deletar sub-records dos laudos (FK constraints)
+      await prisma.laudoRuido.deleteMany({ where: { laudoId: { in: laudoIds } } });
+      await prisma.laudoPinoRei.deleteMany({ where: { laudoId: { in: laudoIds } } });
+      await prisma.laudoQuintaRoda.deleteMany({ where: { laudoId: { in: laudoIds } } });
+      // Deletar laudos
+      await prisma.laudo.deleteMany({ where: { vehicleId } });
+    }
+
     const deletedVehicle = await prisma.vehicle.delete({
       where: {
         id: vehicleId,
@@ -99,7 +115,7 @@ export async function DELETE(request: NextRequest) {
     console.log('✅ VEÍCULO DELETADO:', deletedVehicle.placa);
 
     return NextResponse.json({
-      message: 'Vehicle deleted successfully',
+      message: 'Veículo deletado com sucesso',
       vehicle: deletedVehicle
     });
 
@@ -108,13 +124,13 @@ export async function DELETE(request: NextRequest) {
 
     if (error && typeof error === 'object' && 'code' in error && error.code === 'P2025') {
       return NextResponse.json(
-        { message: 'Vehicle not found' },
+        { message: 'Veículo não encontrado' },
         { status: 404 }
       );
     }
 
     return NextResponse.json(
-      { message: 'Failed to delete vehicle' },
+      { message: 'Falha ao deletar veículo' },
       { status: 500 }
     );
   }

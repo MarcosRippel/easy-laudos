@@ -1,119 +1,128 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { OpenAI } from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const openai = new OpenAI({
-  apiKey: '***REMOVED-OPENAI-API-KEY***'
-});
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+if (!GEMINI_API_KEY) console.error('⚠️  [process-document] GEMINI_API_KEY não configurada no .env');
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY ?? '');
 
-const assistantId = 'asst_kga7L8PQxvBb1PvA01OOkCkH';
+// Modelos em ordem de preferência — se um falhar (503/429/404), tenta o próximo
+const FALLBACK_MODELS = [
+  'gemini-2.5-flash-lite',
+  'gemini-flash-lite-latest',
+  'gemini-flash-latest',
+];
+
+const SYSTEM_PROMPT = `Você é um assistente especialista em documentos veiculares brasileiros (CRLV, CRV, DUT etc). Sua função é extrair com precisão os dados principais dos documentos enviados em PDF e retornar um JSON no seguinte formato:
+
+A chave principal do JSON será a placa do veículo.
+
+Os valores extraídos devem conter:
+- especie_tipo
+- marca_modelo
+- nro_chassi
+- placa
+- ano_fabricacao
+- ano_modelo
+
+Você deve ignorar dados irrelevantes como QRCode, mensagens publicitárias e textos duplicados.
+
+Se algum dado estiver ausente, retorne "valor_indisponivel" no campo correspondente.
+
+Retorne APENAS o JSON puro, sem markdown, sem blocos de código, sem explicações. Só o JSON.
+
+EXEMPLO DE SAÍDA:
+{
+  "ABC1234": {
+    "especie_tipo": "TRACAO CAMINHAO TRATOR",
+    "marca_modelo": "VOLVO/FH 460 6X2T",
+    "nro_chassi": "9BVRTY0C6SE614552",
+    "placa": "ABC1234",
+    "ano_fabricacao": "2024",
+    "ano_modelo": "2025"
+  }
+}`;
+
+async function tryExtract(base64: string, mimeType: string): Promise<string> {
+  let lastError: unknown;
+
+  for (const modelName of FALLBACK_MODELS) {
+    console.log(`🤖 Tentando modelo: ${modelName}`);
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent([
+        { inlineData: { mimeType, data: base64 } },
+        { text: SYSTEM_PROMPT },
+      ]);
+
+      const text = result.response.text().trim()
+        .replace(/^```json\s*/i, '')
+        .replace(/^```\s*/i, '')
+        .replace(/\s*```$/i, '')
+        .trim();
+
+      console.log(`✅ ${modelName} respondeu!`);
+      return text;
+    } catch (err: unknown) {
+      const msg = String(err);
+      const isRetryable = msg.includes('503') || msg.includes('429') || msg.includes('500') || msg.includes('overloaded');
+      console.warn(`⚠️  ${modelName} falhou: ${msg.slice(0, 120)}`);
+      lastError = err;
+
+      if (!isRetryable) {
+        // Erro definitivo (ex: 404) — pula direto pro próximo modelo
+        continue;
+      }
+
+      // Erro transitório — aguarda 1s e tenta o próximo
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  }
+
+  throw lastError ?? new Error('Todos os modelos falharam');
+}
 
 export async function POST(request: NextRequest) {
-  console.log('🔥 API /process-document CHAMADA RECEBIDA!');
-  
+  console.log('🔥 API /process-document CHAMADA RECEBIDA! (Gemini)');
+
   try {
-    console.log('📋 Processando formData...');
     const formData = await request.formData();
     const file = formData.get('file') as File;
 
-    console.log('📁 Arquivo recebido:', {
-      nome: file?.name,
-      tipo: file?.type,
-      tamanho: file?.size
-    });
-
     if (!file) {
-      console.log('❌ ERRO: Nenhum arquivo fornecido');
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    console.log('📤 Fazendo upload para OpenAI...');
-    // Upload do arquivo
-    const uploadedFile = await openai.files.create({
-      file,
-      purpose: 'assistants'
-    });
-    console.log('✅ Upload concluído:', uploadedFile.id);
+    console.log(`📁 Arquivo: ${file.name} (${file.type}, ${file.size} bytes)`);
 
-    console.log('🧵 Criando thread...');
-    // Criar thread
-    const thread = await openai.beta.threads.create();
-    console.log('✅ Thread criada:', thread.id);
+    const arrayBuffer = await file.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString('base64');
 
-    console.log('📝 Enviando mensagem com attachment...');
-    // Enviar mensagem com o prompt + arquivo
-    const message = await openai.beta.threads.messages.create(thread.id, {
-      role: 'user',
-      content: [
-        {
-          type: 'text',
-          text: 'Extraia Placa Nro. Chassi Espécie/Tipo Marca/Modelo Ano Fabric./Modelo e retorne em JSON'
-        }
-      ],
-      attachments: [
-        {
-          file_id: uploadedFile.id,
-          tools: [{ type: 'file_search' }]
-        }
-      ]
-    });
-    console.log('✅ Mensagem enviada:', message.id);
-
-    console.log('🚀 Executando assistant...');
-    // Executar assistant com modelo gpt-4.1-mini
-    const run = await openai.beta.threads.runs.create(thread.id, {
-      assistant_id: assistantId,
-      model: 'gpt-4.1-mini'
-    });
-    console.log('✅ Run criada:', run.id);
-
-    console.log('⏳ Aguardando execução...');
-    // Aguardar execução
-    let status = 'queued';
-    let attempts = 0;
-    const maxAttempts = 60;
-
-    while (status !== 'completed' && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      const runStatus = await openai.beta.threads.runs.retrieve(run.id, { thread_id: thread.id });
-      status = runStatus.status;
-      attempts++;
-      
-      console.log(`⏱️ Status: ${status} (tentativa ${attempts}/${maxAttempts})`);
-
-      if (status === 'failed') {
-        console.log('❌ Execução falhou:', runStatus.last_error);
-        throw new Error(`Execução falhou: ${runStatus.last_error?.message || 'erro desconhecido'}`);
-      }
+    let mimeType = file.type;
+    if (!mimeType || mimeType === 'application/octet-stream') {
+      if (file.name.endsWith('.pdf')) mimeType = 'application/pdf';
+      else if (file.name.endsWith('.png')) mimeType = 'image/png';
+      else if (file.name.match(/\.jpe?g$/i)) mimeType = 'image/jpeg';
     }
 
-    if (status !== 'completed') {
-      console.log('⚠️ Execução não completada, status final:', status);
-      throw new Error(`Execução não completada: status final = ${status}`);
+    const responseText = await tryExtract(base64, mimeType);
+
+    // Validar JSON antes de retornar
+    try {
+      const parsed = JSON.parse(responseText);
+      console.log('🎉 JSON extraído:', JSON.stringify(parsed));
+      return NextResponse.json({ resposta: responseText });
+    } catch {
+      console.error('❌ Resposta não é JSON válido:', responseText.slice(0, 200));
+      return NextResponse.json(
+        { error: 'Resposta inválida da IA', resposta: responseText },
+        { status: 422 }
+      );
     }
-
-    console.log('✅ Execução completada! Obtendo resposta...');
-    // Obter a resposta final
-    const messages = await openai.beta.threads.messages.list(thread.id, {
-      order: 'desc',
-      limit: 1
-    });
-
-    const messageContent = messages.data[0]?.content.find(c => c.type === 'text');
-
-    if (!messageContent) {
-      console.log('❌ Nenhuma resposta textual encontrada');
-      throw new Error('Nenhuma resposta textual recebida do assistente.');
-    }
-
-    console.log('🎉 RESPOSTA FINAL:', messageContent.text.value);
-    console.log('📤 Retornando resposta para frontend...');
-
-    return NextResponse.json({
-      resposta: messageContent.text.value
-    });
-
   } catch (err) {
     console.error('Erro durante o processamento:', err);
-    return NextResponse.json({ error: 'Erro interno', message: String(err) }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Todos os modelos de IA falharam. Tente novamente em instantes.', message: String(err) },
+      { status: 503 }
+    );
   }
 }

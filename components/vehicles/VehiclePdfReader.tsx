@@ -80,7 +80,7 @@ export default function VehiclePdfReader({ onDataParsed }: Props) {
   return (
     <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
       <label htmlFor="pdf-upload-tesseract" className={`${styles.button} ${isLoading ? styles.disabled : ''}`}>
-        {isLoading ? ocrProgress : 'Import from Document (Image/PNG/JPG)'}
+        {isLoading ? ocrProgress : 'Importar Documento (Imagem/PNG/JPG)'}
       </label>
       <input
         type="file"
