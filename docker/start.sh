@@ -10,7 +10,7 @@ echo "=================================================="
 # Definir variáveis do container
 export CONTAINER_IP="172.20.0.10"
 export NODE_ENV="production"
-export PORT="3000"
+export PORT="3006"
 export DATABASE_URL="file:./prisma/dev.db"
 
 # Função de logging
@@ -142,8 +142,8 @@ LAUNCHER_PID=$!
 log "✅ CONTAINER TOTALMENTE INICIALIZADO"
 log "📡 HTTP: http://172.20.0.10:80"
 log "🔒 HTTPS: https://inspetor.terpens.com.br:443"
-log "🔍 Next.js Direto: http://172.20.0.10:3000"
-log "💚 Health: http://172.20.0.10:3000/api/health"
+log "🔍 Next.js Direto: http://172.20.0.10:3006"
+log "💚 Health: http://172.20.0.10:3006/api/health"
 
 # Loop principal - aguardar sinais
 while true; do

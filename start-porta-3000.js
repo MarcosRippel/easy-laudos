@@ -17,21 +17,21 @@ const httpsPort = 3000;  // Alterado de 9444 para 3000
 
 // Diretório de certificados SSL
 const sslDir = path.join(__dirname, 'ssl');
-const certFile = path.join(sslDir, 'gs.terpens.com.br.crt');
-const keyFile = path.join(sslDir, 'gs.terpens.com.br.key');
+const certFile = path.join(sslDir, 'generalinspetor.terpens.com.br.crt');
+const keyFile = path.join(sslDir, 'generalinspetor.terpens.com.br.key');
 
 // Verificar certificados SSL da HostGator
 if (!fs.existsSync(certFile)) {
     console.error('❌ Certificado SSL não encontrado:', certFile);
     console.log('Por favor, baixe o certificado da HostGator e coloque em ssl/');
-    console.log('Arquivo necessário: ssl/gs.terpens.com.br.crt');
+    console.log('Arquivo necessário: ssl/generalinspetor.terpens.com.br.crt');
     process.exit(1);
 }
 
 if (!fs.existsSync(keyFile)) {
     console.error('❌ Chave SSL não encontrada:', keyFile);
     console.log('Por favor, baixe a chave privada da HostGator e coloque em ssl/');
-    console.log('Arquivo necessário: ssl/gs.terpens.com.br.key');
+    console.log('Arquivo necessário: ssl/generalinspetor.terpens.com.br.key');
     process.exit(1);
 }
 
@@ -75,7 +75,7 @@ app.prepare().then(() => {
         console.log(`  └─ https://177.126.153.190:${httpsPort}`);
         console.log('');
         console.log('  Via Cloudflare Tunnel:');
-        console.log('  └─ https://gs.terpens.com.br');
+        console.log('  └─ https://generalinspetor.terpens.com.br');
         console.log('');
         console.log('================================================');
         console.log('🔒 Certificados SSL carregados com sucesso!');

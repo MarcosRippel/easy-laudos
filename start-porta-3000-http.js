@@ -44,7 +44,7 @@ app.prepare().then(() => {
         console.log(`  └─ http://177.126.153.190:${port}`);
         console.log('');
         console.log('  Via Cloudflare Tunnel (HTTPS):');
-        console.log('  └─ https://gs.terpens.com.br');
+        console.log('  └─ https://generalinspetor.terpens.com.br');
         console.log('');
         console.log('================================================');
         console.log('✅ Sistema pronto na porta 3000');
