@@ -2,31 +2,36 @@
 import CreateLaudoForm from "@/components/laudos/CreateLaudoForm";
 import { prisma } from '@/lib/prisma';
 import type { Client } from '@prisma/client';
+import { getTemporalCode } from '@/lib/temporal-code';
+
+async function getNextOrdemServico(): Promise<string> {
+  try {
+    // Buscar TODOS os números de OS para encontrar o máximo real
+    const allLaudos = await prisma.laudo.findMany({
+      select: { ordemServico: true },
+    });
+
+    const numbers = allLaudos
+      .map(l => parseInt(l.ordemServico, 10))
+      .filter(n => !isNaN(n));
+
+    const maxNumber = numbers.length > 0 ? Math.max(...numbers) : 0;
+    return String(maxNumber + 1).padStart(6, '0');
+  } catch (error) {
+    console.error('Failed to get next OS:', error);
+    return '000001';
+  }
+}
+
 
 async function getData() {
-  const clientPromise = prisma.client.findMany({
-    orderBy: { name: 'asc' },
-  });
-
-  const nextOsPromise = fetch(`${process.env.NEXT_PUBLIC_URL}/api/laudos/next-os`, {
-    cache: 'no-store',
-  }).then(res => res.json());
-
-  const temporalCodePromise = fetch(`${process.env.NEXT_PUBLIC_URL}/api/temporal-code`, {
-    cache: 'no-store',
-  }).then(res => res.json());
-
-  const [clients, nextOsData, temporalCodeData] = await Promise.all([
-    clientPromise,
-    nextOsPromise,
-    temporalCodePromise
+  const [clients, nextOrdemServico, temporalCode] = await Promise.all([
+    prisma.client.findMany({ orderBy: { name: 'asc' } }),
+    getNextOrdemServico(),
+    getTemporalCode()
   ]);
 
-  return {
-    clients,
-    nextOrdemServico: nextOsData.nextOrdemServico,
-    temporalCode: temporalCodeData.code
-  };
+  return { clients, nextOrdemServico, temporalCode };
 }
 
 export default async function CreateLaudoPage() {

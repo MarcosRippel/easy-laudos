@@ -1,26 +1,41 @@
 import PinoReiForm from "@/components/laudos/PinoReiForm";
 import { prisma } from '@/lib/prisma';
+import { getTemporalCode } from '@/lib/temporal-code';
+
+async function getNextOrdemServico(): Promise<string> {
+  try {
+    // Buscar TODOS os números de OS de TODAS as tabelas para encontrar o máximo real
+    const allLaudos = await prisma.laudo.findMany({
+      select: { ordemServico: true },
+    });
+
+    const numbers = allLaudos
+      .map(l => parseInt(l.ordemServico, 10))
+      .filter(n => !isNaN(n));
+
+    const maxNumber = numbers.length > 0 ? Math.max(...numbers) : 0;
+    return String(maxNumber + 1).padStart(6, '0');
+  } catch (error) {
+    console.error('Failed to get next OS:', error);
+    return '000001';
+  }
+}
+
+
 
 async function getPinoReiData() {
-  const [clients, nextOsData, temporalCodeData] = await Promise.all([
+  const [clients, nextOrdemServico, temporalCode, adminSettings] = await Promise.all([
     prisma.client.findMany(),
-    fetch(`${process.env.NEXT_PUBLIC_URL}/api/laudos/next-os`, {
-      cache: 'no-store',
-    }).then(res => res.json()),
-    fetch(`${process.env.NEXT_PUBLIC_URL}/api/temporal-code`, {
-      cache: 'no-store',
-    }).then(res => res.json())
+    getNextOrdemServico(),
+    getTemporalCode(),
+    prisma.adminSetting.findFirst(),
   ]);
 
-  return {
-    clients,
-    nextOrdemServico: nextOsData.nextOS,
-    temporalCode: temporalCodeData.code
-  };
+  return { clients, nextOrdemServico, temporalCode, nomeResponsavel: adminSettings?.nomeResponsavel || '' };
 }
 
 export default async function PinoReiPage() {
-  const { clients, nextOrdemServico, temporalCode } = await getPinoReiData();
+  const { clients, nextOrdemServico, temporalCode, nomeResponsavel } = await getPinoReiData();
 
   return (
     <div style={{
@@ -47,11 +62,12 @@ export default async function PinoReiPage() {
         }}>
           🔧 Laudo PINO REI - Inspeção Técnica Pino Rei e Mesa
         </h1>
-        
-        <PinoReiForm 
+
+        <PinoReiForm
           clients={clients}
           nextOrdemServico={nextOrdemServico}
           temporalCode={temporalCode}
+          nomeResponsavel={nomeResponsavel}
         />
       </div>
     </div>

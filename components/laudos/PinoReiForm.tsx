@@ -22,23 +22,27 @@ interface PinoReiFormProps {
   clients: Client[];
   nextOrdemServico: string;
   temporalCode: string;
+  nomeResponsavel?: string;
+  initialClientId?: string;
+  initialPlaca?: string;
 }
 
-export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }: PinoReiFormProps) {
+export default function PinoReiForm({ clients, nextOrdemServico, temporalCode, nomeResponsavel = '', initialClientId, initialPlaca }: PinoReiFormProps) {
   const [selectedClient, setSelectedClient] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState('');
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [equipments, setEquipments] = useState<Equipment[]>([]);
   const [isVehicleLoading, setIsVehicleLoading] = useState(false);
   const [isEquipmentLoading, setIsEquipmentLoading] = useState(false);
-  
+
   const [pinoReiData, setPinoReiData] = useState({
     ...initialPinoReiData,
     ordemServico: nextOrdemServico,
     codigoTemporal: temporalCode,
     dataEmissao: new Date().toISOString().split('T')[0],
+    inspetorResponsavel: nomeResponsavel, // Pré-preenchido do perfil do inspetor
   });
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const [showPdfButton, setShowPdfButton] = useState(false);
@@ -50,6 +54,25 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
     fetchEquipments();
     fetchTemporalCode();
   }, []);
+
+  // Auto-selecionar cliente e veículo quando vindo da lista de veículos
+  useEffect(() => {
+    if (initialClientId) {
+      setSelectedClient(initialClientId);
+      setIsVehicleLoading(true);
+      fetch(`/api/vehicles?clientId=${initialClientId}`)
+        .then(res => res.ok ? res.json() : [])
+        .then((vehiclesData: Vehicle[]) => {
+          setVehicles(vehiclesData);
+          if (initialPlaca) {
+            const match = vehiclesData.find((v: Vehicle) => v.placa === initialPlaca);
+            if (match) setSelectedVehicle(match.id);
+          }
+        })
+        .catch(console.error)
+        .finally(() => setIsVehicleLoading(false));
+    }
+  }, [initialClientId, initialPlaca]);
 
   // Função para buscar código temporal real da loteria
   const fetchTemporalCode = async () => {
@@ -73,7 +96,7 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
     const today = new Date();
     const expiration = new Date(expirationDate);
     const diffDays = Math.ceil((expiration.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays <= 0) return 'expired';
     if (diffDays <= 15) return 'critical';
     if (diffDays <= 30) return 'warning';
@@ -129,7 +152,7 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
   const handleVehicleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const vehicleId = event.target.value;
     setSelectedVehicle(vehicleId);
-    
+
     // Auto-preencher placa do veículo
     if (vehicleId) {
       const vehicle = vehicles.find(v => v.id === vehicleId);
@@ -141,19 +164,19 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    
+
     // Validações específicas
     if (name === 'diametroRegistrado') {
       if (value === '') {
         // Campo vazio - não definir valor
         return;
       }
-      
+
       const numValue = parseFloat(value);
       if (isNaN(numValue)) return;
-      
+
       if (!isValidDiametro(numValue)) return;
-      
+
       setPinoReiData(prev => ({ ...prev, [name]: numValue }));
     } else if (name === 'dataValidadeInspecao') {
       // Para input type="date", o valor já vem no formato correto YYYY-MM-DD
@@ -198,7 +221,7 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
       const result = await response.json();
       setPinoReiData(prev => ({ ...prev, [fieldName]: result.url }));
       setMessage('Imagem enviada com sucesso!');
-      
+
     } catch (error) {
       console.error('Erro no upload:', error);
       setMessage('Erro ao enviar imagem. Tente novamente.');
@@ -211,7 +234,7 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
   const generateHTML = async (laudoPinoReiId: string) => {
     try {
       setMessage('Gerando HTML...');
-      
+
       const response = await fetch(`/api/laudos/pino-rei/pdf?id=${laudoPinoReiId}&format=html`);
 
       if (!response.ok) {
@@ -219,16 +242,16 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
       }
 
       const htmlContent = await response.text();
-      
+
       // Abrir HTML em nova aba
       const newWindow = window.open('', '_blank');
       if (newWindow) {
         newWindow.document.write(htmlContent);
         newWindow.document.close();
       }
-      
+
       setMessage('HTML gerado e aberto em nova aba!');
-      
+
     } catch (error) {
       console.error('Erro ao gerar HTML:', error);
       setMessage('Erro ao gerar HTML. Tente novamente.');
@@ -238,7 +261,7 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
   const generatePDF = async (laudoPinoReiId: string) => {
     try {
       setMessage('Gerando PDF...');
-      
+
       const response = await fetch(`/api/laudos/pino-rei/pdf?id=${laudoPinoReiId}`);
 
       if (!response.ok) {
@@ -255,9 +278,9 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
+
       setMessage('PDF gerado e baixado com sucesso!');
-      
+
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
       setMessage('Erro ao gerar PDF. Tente novamente.');
@@ -266,7 +289,7 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedClient || !selectedVehicle) {
       setMessage('Por favor, selecione cliente e veículo.');
       return;
@@ -284,27 +307,27 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
       setMessage('Por favor, selecione cliente e veículo.');
       return;
     }
-    
+
     if (!pinoReiData.equipmentId) {
       setMessage('Por favor, selecione um equipamento.');
       return;
     }
-    
+
     if (!pinoReiData.dataValidadeInspecao) {
       setMessage('Por favor, selecione a data de validade da inspeção.');
       return;
     }
-    
+
     if (!pinoReiData.inspetorResponsavel) {
       setMessage('Por favor, informe o inspetor responsável.');
       return;
     }
-    
+
     if (!pinoReiData.normasAplicaveis) {
       setMessage('Por favor, informe as normas aplicáveis.');
       return;
     }
-    
+
     if (pinoReiData.diametroRegistrado <= 0) {
       setMessage('Por favor, informe um diâmetro registrado válido (maior que 0).');
       return;
@@ -337,7 +360,7 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
 
     try {
       console.log('🔍 DEBUG: Dados sendo enviados para API:', apiData);
-      
+
       const response = await fetch('/api/laudos/pino-rei', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -356,7 +379,7 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
       const laudoPinoReiId = result.laudoPinoRei.id;
       setMessage('Laudo de Pino Rei criado com sucesso! Gerando PDF...');
       setCreatedLaudoId(laudoPinoReiId);
-      
+
       // Gerar PDF automaticamente após criar o laudo
       try {
         await generatePDF(laudoPinoReiId);
@@ -411,11 +434,11 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Veículo*</label>
-            <select 
-              value={selectedVehicle} 
-              onChange={handleVehicleChange} 
-              disabled={!selectedClient || isVehicleLoading} 
-              required 
+            <select
+              value={selectedVehicle}
+              onChange={handleVehicleChange}
+              disabled={!selectedClient || isVehicleLoading}
+              required
               className={styles.select}
             >
               {isVehicleLoading ? (
@@ -436,57 +459,58 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
         <div className={styles.grid3col}>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Placa do Veículo*</label>
-            <input 
-              type="text" 
-              name="placaVeiculo" 
-              value={pinoReiData.placaVeiculo} 
-              onChange={handleInputChange} 
-              required 
+            <input
+              type="text"
+              name="placaVeiculo"
+              value={pinoReiData.placaVeiculo}
+              onChange={handleInputChange}
+              required
               className={styles.input}
               placeholder="ABC-1234"
             />
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Ordem de Serviço*</label>
-            <input 
-              type="text" 
-              name="ordemServico" 
-              value={pinoReiData.ordemServico} 
-              onChange={handleInputChange} 
-              required 
+            <input
+              type="text"
+              name="ordemServico"
+              value={pinoReiData.ordemServico}
+              onChange={handleInputChange}
+              required
               className={styles.input}
               placeholder="Digite a OS"
             />
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Data de Emissão*</label>
-            <input 
-              type="date" 
-              name="dataEmissao" 
-              value={pinoReiData.dataEmissao} 
-              onChange={handleInputChange} 
-              required 
+            <input
+              type="date"
+              name="dataEmissao"
+              value={pinoReiData.dataEmissao}
+              onChange={handleInputChange}
+              required
               className={styles.input}
             />
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Código Temporal (Loteria Federal) 🎲</label>
-            <input 
-              type="text" 
-              name="codigoTemporal" 
-              value={pinoReiData.codigoTemporal} 
-              className={styles.input} 
-              readOnly 
-              style={{ backgroundColor: '#444' }}
+            <input
+              type="text"
+              name="codigoTemporal"
+              value={pinoReiData.codigoTemporal}
+              onChange={handleInputChange}
+              className={styles.input}
+              placeholder="Código gerado automaticamente"
+              title="Gerado pelo último sorteio da Loteria Federal. Você pode alterar manualmente."
             />
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Equipamento*</label>
-            <select 
-              name="equipmentId" 
-              value={pinoReiData.equipmentId} 
-              onChange={handleInputChange} 
-              required 
+            <select
+              name="equipmentId"
+              value={pinoReiData.equipmentId}
+              onChange={handleInputChange}
+              required
               className={styles.select}
               disabled={isEquipmentLoading}
             >
@@ -499,7 +523,7 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
                     const status = getEquipmentStatus(equipment.expirationDate.toString());
                     const emoji = getStatusEmoji(status);
                     const daysToExpire = Math.ceil((new Date(equipment.expirationDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                    
+
                     return (
                       <option key={equipment.id} value={equipment.id}>
                         {emoji} {equipment.name} {equipment.model} - {equipment.certificateNumber}
@@ -533,10 +557,10 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
             <label className={styles.label}>Posição Vertical*</label>
             <div className={styles.radioGroup}>
               <label className={styles.radioLabel}>
-                <input 
-                  type="radio" 
-                  name="posicaoVertical" 
-                  value="SIM" 
+                <input
+                  type="radio"
+                  name="posicaoVertical"
+                  value="SIM"
                   checked={pinoReiData.posicaoVertical === 'SIM'}
                   onChange={handleInputChange}
                   className={styles.radio}
@@ -544,10 +568,10 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
                 SIM
               </label>
               <label className={styles.radioLabel}>
-                <input 
-                  type="radio" 
-                  name="posicaoVertical" 
-                  value="NÃO" 
+                <input
+                  type="radio"
+                  name="posicaoVertical"
+                  value="NÃO"
                   checked={pinoReiData.posicaoVertical === 'NÃO'}
                   onChange={handleInputChange}
                   className={styles.radio}
@@ -560,10 +584,10 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
             <label className={styles.label}>Presença de Trincas*</label>
             <div className={styles.radioGroup}>
               <label className={styles.radioLabel}>
-                <input 
-                  type="radio" 
-                  name="presencaTrincas" 
-                  value="SIM" 
+                <input
+                  type="radio"
+                  name="presencaTrincas"
+                  value="SIM"
                   checked={pinoReiData.presencaTrincas === 'SIM'}
                   onChange={handleInputChange}
                   className={styles.radio}
@@ -571,10 +595,10 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
                 SIM
               </label>
               <label className={styles.radioLabel}>
-                <input 
-                  type="radio" 
-                  name="presencaTrincas" 
-                  value="NÃO" 
+                <input
+                  type="radio"
+                  name="presencaTrincas"
+                  value="NÃO"
                   checked={pinoReiData.presencaTrincas === 'NÃO'}
                   onChange={handleInputChange}
                   className={styles.radio}
@@ -589,10 +613,10 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
             <label className={styles.label}>Integridade da Fixação*</label>
             <div className={styles.radioGroup}>
               <label className={styles.radioLabel}>
-                <input 
-                  type="radio" 
-                  name="integridadeFixacao" 
-                  value="SIM" 
+                <input
+                  type="radio"
+                  name="integridadeFixacao"
+                  value="SIM"
                   checked={pinoReiData.integridadeFixacao === 'SIM'}
                   onChange={handleInputChange}
                   className={styles.radio}
@@ -600,10 +624,10 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
                 SIM
               </label>
               <label className={styles.radioLabel}>
-                <input 
-                  type="radio" 
-                  name="integridadeFixacao" 
-                  value="NÃO" 
+                <input
+                  type="radio"
+                  name="integridadeFixacao"
+                  value="NÃO"
                   checked={pinoReiData.integridadeFixacao === 'NÃO'}
                   onChange={handleInputChange}
                   className={styles.radio}
@@ -616,10 +640,10 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
             <label className={styles.label}>Selo de Identificação*</label>
             <div className={styles.radioGroup}>
               <label className={styles.radioLabel}>
-                <input 
-                  type="radio" 
-                  name="seloIdentificacao" 
-                  value="SIM" 
+                <input
+                  type="radio"
+                  name="seloIdentificacao"
+                  value="SIM"
                   checked={pinoReiData.seloIdentificacao === 'SIM'}
                   onChange={handleInputChange}
                   className={styles.radio}
@@ -627,10 +651,10 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
                 SIM
               </label>
               <label className={styles.radioLabel}>
-                <input 
-                  type="radio" 
-                  name="seloIdentificacao" 
-                  value="NÃO" 
+                <input
+                  type="radio"
+                  name="seloIdentificacao"
+                  value="NÃO"
                   checked={pinoReiData.seloIdentificacao === 'NÃO'}
                   onChange={handleInputChange}
                   className={styles.radio}
@@ -643,11 +667,11 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
         <div className={styles.grid3col}>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Tipo de Fixação do Pino*</label>
-            <select 
-              name="tipoFixacaoPino" 
-              value={pinoReiData.tipoFixacaoPino} 
-              onChange={handleInputChange} 
-              required 
+            <select
+              name="tipoFixacaoPino"
+              value={pinoReiData.tipoFixacaoPino}
+              onChange={handleInputChange}
+              required
               className={styles.select}
             >
               <option value="SOLDA">SOLDA</option>
@@ -657,9 +681,9 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Diâmetro Registrado (mm)*</label>
-            <input 
-              type="number" 
-              name="diametroRegistrado" 
+            <input
+              type="number"
+              name="diametroRegistrado"
               value={pinoReiData.diametroRegistrado}
               onChange={handleInputChange}
               step="0.1"
@@ -674,10 +698,10 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
             <label className={styles.label}>Estado de Conservação*</label>
             <div className={styles.radioGroup}>
               <label className={styles.radioLabel}>
-                <input 
-                  type="radio" 
-                  name="estadoConservacao" 
-                  value="SIM" 
+                <input
+                  type="radio"
+                  name="estadoConservacao"
+                  value="SIM"
                   checked={pinoReiData.estadoConservacao === 'SIM'}
                   onChange={handleInputChange}
                   className={styles.radio}
@@ -685,10 +709,10 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
                 SIM
               </label>
               <label className={styles.radioLabel}>
-                <input 
-                  type="radio" 
-                  name="estadoConservacao" 
-                  value="NÃO" 
+                <input
+                  type="radio"
+                  name="estadoConservacao"
+                  value="NÃO"
                   checked={pinoReiData.estadoConservacao === 'NÃO'}
                   onChange={handleInputChange}
                   className={styles.radio}
@@ -703,10 +727,10 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
             <label className={styles.label}>Resultado Pino Rei*</label>
             <div className={styles.radioGroup}>
               <label className={styles.radioLabel}>
-                <input 
-                  type="radio" 
-                  name="resultadoPinoRei" 
-                  value="APROVADO" 
+                <input
+                  type="radio"
+                  name="resultadoPinoRei"
+                  value="APROVADO"
                   checked={pinoReiData.resultadoPinoRei === 'APROVADO'}
                   onChange={handleInputChange}
                   className={styles.radio}
@@ -714,10 +738,10 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
                 APROVADO
               </label>
               <label className={styles.radioLabel}>
-                <input 
-                  type="radio" 
-                  name="resultadoPinoRei" 
-                  value="REPROVADO" 
+                <input
+                  type="radio"
+                  name="resultadoPinoRei"
+                  value="REPROVADO"
                   checked={pinoReiData.resultadoPinoRei === 'REPROVADO'}
                   onChange={handleInputChange}
                   className={styles.radio}
@@ -735,11 +759,11 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
         <div className={styles.grid}>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Tipo de Fixação da Mesa*</label>
-            <select 
-              name="tipoFixacaoMesa" 
-              value={pinoReiData.tipoFixacaoMesa} 
-              onChange={handleInputChange} 
-              required 
+            <select
+              name="tipoFixacaoMesa"
+              value={pinoReiData.tipoFixacaoMesa}
+              onChange={handleInputChange}
+              required
               className={styles.select}
             >
               <option value="SOLDA">SOLDA</option>
@@ -750,10 +774,10 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
             <label className={styles.label}>Mesa Bem Fixada*</label>
             <div className={styles.radioGroup}>
               <label className={styles.radioLabel}>
-                <input 
-                  type="radio" 
-                  name="mesaBemFixada" 
-                  value="SIM" 
+                <input
+                  type="radio"
+                  name="mesaBemFixada"
+                  value="SIM"
                   checked={pinoReiData.mesaBemFixada === 'SIM'}
                   onChange={handleInputChange}
                   className={styles.radio}
@@ -761,10 +785,10 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
                 SIM
               </label>
               <label className={styles.radioLabel}>
-                <input 
-                  type="radio" 
-                  name="mesaBemFixada" 
-                  value="NÃO" 
+                <input
+                  type="radio"
+                  name="mesaBemFixada"
+                  value="NÃO"
                   checked={pinoReiData.mesaBemFixada === 'NÃO'}
                   onChange={handleInputChange}
                   className={styles.radio}
@@ -779,10 +803,10 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
             <label className={styles.label}>Mesa com Reparo de Solda*</label>
             <div className={styles.radioGroup}>
               <label className={styles.radioLabel}>
-                <input 
-                  type="radio" 
-                  name="mesaReparoSolda" 
-                  value="SIM" 
+                <input
+                  type="radio"
+                  name="mesaReparoSolda"
+                  value="SIM"
                   checked={pinoReiData.mesaReparoSolda === 'SIM'}
                   onChange={handleInputChange}
                   className={styles.radio}
@@ -790,10 +814,10 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
                 SIM
               </label>
               <label className={styles.radioLabel}>
-                <input 
-                  type="radio" 
-                  name="mesaReparoSolda" 
-                  value="NÃO" 
+                <input
+                  type="radio"
+                  name="mesaReparoSolda"
+                  value="NÃO"
                   checked={pinoReiData.mesaReparoSolda === 'NÃO'}
                   onChange={handleInputChange}
                   className={styles.radio}
@@ -806,10 +830,10 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
             <label className={styles.label}>Resultado Mesa*</label>
             <div className={styles.radioGroup}>
               <label className={styles.radioLabel}>
-                <input 
-                  type="radio" 
-                  name="resultadoMesa" 
-                  value="APROVADO" 
+                <input
+                  type="radio"
+                  name="resultadoMesa"
+                  value="APROVADO"
                   checked={pinoReiData.resultadoMesa === 'APROVADO'}
                   onChange={handleInputChange}
                   className={styles.radio}
@@ -817,10 +841,10 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
                 APROVADO
               </label>
               <label className={styles.radioLabel}>
-                <input 
-                  type="radio" 
-                  name="resultadoMesa" 
-                  value="REPROVADO" 
+                <input
+                  type="radio"
+                  name="resultadoMesa"
+                  value="REPROVADO"
                   checked={pinoReiData.resultadoMesa === 'REPROVADO'}
                   onChange={handleInputChange}
                   className={styles.radio}
@@ -840,10 +864,10 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
             <label className={styles.label}>Ensaio Complementar*</label>
             <div className={styles.radioGroup}>
               <label className={styles.radioLabel}>
-                <input 
-                  type="radio" 
-                  name="ensaioComplementar" 
-                  value="SIM" 
+                <input
+                  type="radio"
+                  name="ensaioComplementar"
+                  value="SIM"
                   checked={pinoReiData.ensaioComplementar === 'SIM'}
                   onChange={handleInputChange}
                   className={styles.radio}
@@ -851,10 +875,10 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
                 SIM
               </label>
               <label className={styles.radioLabel}>
-                <input 
-                  type="radio" 
-                  name="ensaioComplementar" 
-                  value="NÃO" 
+                <input
+                  type="radio"
+                  name="ensaioComplementar"
+                  value="NÃO"
                   checked={pinoReiData.ensaioComplementar === 'NÃO'}
                   onChange={handleInputChange}
                   className={styles.radio}
@@ -866,11 +890,11 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
           {pinoReiData.ensaioComplementar === 'SIM' && (
             <div className={styles.inputGroup}>
               <label className={styles.label}>Qual Ensaio?</label>
-              <input 
-                type="text" 
-                name="qualEnsaio" 
-                value={pinoReiData.qualEnsaio || ''} 
-                onChange={handleInputChange} 
+              <input
+                type="text"
+                name="qualEnsaio"
+                value={pinoReiData.qualEnsaio || ''}
+                onChange={handleInputChange}
                 className={styles.input}
                 placeholder="Descreva o ensaio complementar"
               />
@@ -885,8 +909,8 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
         <div className={styles.grid3col}>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Foto do Chassi</label>
-            <input 
-              type="file" 
+            <input
+              type="file"
               accept="image/*"
               onChange={(e) => handleFileUpload(e, 'fotoChassiUrl')}
               className={styles.input}
@@ -900,8 +924,8 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Foto do Pino Rei</label>
-            <input 
-              type="file" 
+            <input
+              type="file"
               accept="image/*"
               onChange={(e) => handleFileUpload(e, 'fotoPinoReiUrl')}
               className={styles.input}
@@ -915,8 +939,8 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Foto da Mesa</label>
-            <input 
-              type="file" 
+            <input
+              type="file"
               accept="image/*"
               onChange={(e) => handleFileUpload(e, 'fotoMesaUrl')}
               className={styles.input}
@@ -939,10 +963,10 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
             <label className={styles.label}>Resultado Geral*</label>
             <div className={styles.radioGroup}>
               <label className={styles.radioLabel}>
-                <input 
-                  type="radio" 
-                  name="resultadoGeral" 
-                  value="APROVADO" 
+                <input
+                  type="radio"
+                  name="resultadoGeral"
+                  value="APROVADO"
                   checked={pinoReiData.resultadoGeral === 'APROVADO'}
                   onChange={handleInputChange}
                   className={styles.radio}
@@ -950,10 +974,10 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
                 APROVADO
               </label>
               <label className={styles.radioLabel}>
-                <input 
-                  type="radio" 
-                  name="resultadoGeral" 
-                  value="REPROVADO" 
+                <input
+                  type="radio"
+                  name="resultadoGeral"
+                  value="REPROVADO"
                   checked={pinoReiData.resultadoGeral === 'REPROVADO'}
                   onChange={handleInputChange}
                   className={styles.radio}
@@ -964,12 +988,12 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Normas Aplicáveis*</label>
-            <input 
-              type="text" 
-              name="normasAplicaveis" 
-              value={pinoReiData.normasAplicaveis} 
-              onChange={handleInputChange} 
-              required 
+            <input
+              type="text"
+              name="normasAplicaveis"
+              value={pinoReiData.normasAplicaveis}
+              onChange={handleInputChange}
+              required
               className={styles.input}
               placeholder="Portaria nº457/08, Portaria nº70/2008"
             />
@@ -978,12 +1002,12 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
         <div className={styles.grid}>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Inspetor Responsável*</label>
-            <input 
-              type="text" 
-              name="inspetorResponsavel" 
-              value={pinoReiData.inspetorResponsavel} 
-              onChange={handleInputChange} 
-              required 
+            <input
+              type="text"
+              name="inspetorResponsavel"
+              value={pinoReiData.inspetorResponsavel}
+              onChange={handleInputChange}
+              required
               className={styles.input}
               placeholder="Nome do inspetor responsável"
             />
@@ -1010,7 +1034,7 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
         >
           {isSubmitting ? '🔧 Criando Laudo...' : '🔧 Criar Laudo de Pino Rei'}
         </button>
-        
+
         {showPdfButton && createdLaudoId && (
           <div style={{ display: 'flex', gap: '10px', marginLeft: '10px' }}>
             <button
@@ -1037,7 +1061,7 @@ export default function PinoReiForm({ clients, nextOrdemServico, temporalCode }:
             </button>
           </div>
         )}
-        
+
         {message && (
           <span className={`${styles.message} ${message.includes('Erro') ? styles.error : styles.success}`}>
             {message}

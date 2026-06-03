@@ -12,6 +12,8 @@ interface CreateLaudoFormProps {
   clients: Client[];
   nextOrdemServico: string;
   temporalCode: string;
+  initialClientId?: string;
+  initialPlaca?: string;
 }
 
 const initialLaudoData = {
@@ -45,7 +47,7 @@ const getDefaultObservations = (laudoType: string) => {
   return '';
 };
 
-export default function CreateLaudoForm({ clients, nextOrdemServico, temporalCode }: CreateLaudoFormProps) {
+export default function CreateLaudoForm({ clients, nextOrdemServico, temporalCode, initialClientId, initialPlaca }: CreateLaudoFormProps) {
   const [selectedClient, setSelectedClient] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState('');
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -53,10 +55,11 @@ export default function CreateLaudoForm({ clients, nextOrdemServico, temporalCod
   const [laudoData, setLaudoData] = useState({
     ...initialLaudoData,
     ordemServico: nextOrdemServico, // ID automático do sistema
+    ordemServicoUsuario: nextOrdemServico, // Pré-preenche com o próximo número
     codTemporal: temporalCode,
     observacoes: getDefaultObservations('LIT'), // Observações padrão iniciais
   });
-  
+
   // ID único do laudo será gerado após criação
   const [laudoSystemId, setLaudoSystemId] = useState('');
   const [imageFiles, setImageFiles] = useState<{
@@ -71,18 +74,37 @@ export default function CreateLaudoForm({ clients, nextOrdemServico, temporalCod
   // useEffect para atualizar observações quando o tipo de laudo mudar
   useEffect(() => {
     const defaultObs = getDefaultObservations(laudoData.laudoType);
-    
+
     // Só atualiza se as observações atuais são exatamente as observações padrão de outro tipo
     // ou se estão vazias, preservando observações personalizadas do usuário
     const currentObs = laudoData.observacoes;
     const litDefault = getDefaultObservations('LIT');
     const checklistDefault = getDefaultObservations('CHECKLIST');
     const quintaRodaDefault = getDefaultObservations('QUINTA_RODA');
-    
+
     if (currentObs === '' || currentObs === litDefault || currentObs === checklistDefault || currentObs === quintaRodaDefault) {
       setLaudoData(prev => ({ ...prev, observacoes: defaultObs }));
     }
   }, [laudoData.laudoType]);
+
+  // Auto-selecionar cliente e veículo quando vindo da lista de veículos
+  useEffect(() => {
+    if (initialClientId) {
+      setSelectedClient(initialClientId);
+      setIsVehicleLoading(true);
+      fetch(`/api/vehicles?clientId=${initialClientId}`)
+        .then(res => res.ok ? res.json() : [])
+        .then((vehiclesData: Vehicle[]) => {
+          setVehicles(vehiclesData);
+          if (initialPlaca) {
+            const match = vehiclesData.find((v: Vehicle) => v.placa === initialPlaca);
+            if (match) setSelectedVehicle(match.id);
+          }
+        })
+        .catch(console.error)
+        .finally(() => setIsVehicleLoading(false));
+    }
+  }, [initialClientId, initialPlaca]);
 
   const handleClientChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
     const clientId = event.target.value;
@@ -183,7 +205,7 @@ export default function CreateLaudoForm({ clients, nextOrdemServico, temporalCod
       }
 
       await Promise.all(uploadPromises);
-      
+
       console.log('🔍 LIT: URLs finais das imagens após upload:', imageUrls);
 
       setMessage('Creating Laudo...');
@@ -253,11 +275,11 @@ export default function CreateLaudoForm({ clients, nextOrdemServico, temporalCod
       const fullLaudo: Laudo & { client: Client; vehicle: Vehicle } = await laudoDetailsRes.json();
       const adminSettings: AdminSetting = await adminSettingsRes.json();
       const fontBytes = await fontBytesRes.arrayBuffer();
-      
+
       // Debug e fetch do logo
       console.log("Admin settings:", adminSettings);
       console.log("Company logo URL:", adminSettings.companyLogoUrl);
-      
+
       let logoImageData = null;
       if (adminSettings.companyLogoUrl) {
         try {
@@ -279,14 +301,14 @@ export default function CreateLaudoForm({ clients, nextOrdemServico, temporalCod
       const font = await pdfDoc.embedFont(fontBytes);
 
       console.log("fullLaudofullLaudo", fullLaudo)
-      
+
       // DEBUG: Logs para diagnosticar erro "Invalid time value"
       console.log("=== DEBUG DATES ===");
       console.log("dataEmissao raw:", fullLaudo.dataEmissao);
       console.log("dataEmissao type:", typeof fullLaudo.dataEmissao);
       console.log("dataVerifPinoRei raw:", fullLaudo.dataVerifPinoRei);
       console.log("dataVerifPinoRei type:", typeof fullLaudo.dataVerifPinoRei);
-      
+
       // Teste de conversão das datas
       try {
         const testDataEmissao = new Date(fullLaudo.dataEmissao);
@@ -295,7 +317,7 @@ export default function CreateLaudoForm({ clients, nextOrdemServico, temporalCod
       } catch (e) {
         console.error("ERRO na conversão dataEmissao:", e);
       }
-      
+
       try {
         if (fullLaudo.dataVerifPinoRei) {
           const testDataVerifPinoRei = new Date(fullLaudo.dataVerifPinoRei);
@@ -335,27 +357,55 @@ export default function CreateLaudoForm({ clients, nextOrdemServico, temporalCod
           return;
         }
         try {
-          // Construir URL completa se necessário
-          const imageUrl = url.startsWith('http')
-            ? url
-            : `${window.location.origin}${url}`;
-          
+          // Backward compatibility: convert old /uploads/ paths to /api/uploads/
+          let normalizedUrl = url;
+          if (normalizedUrl.startsWith('/uploads/')) {
+            normalizedUrl = `/api${normalizedUrl}`;
+          }
+
+          // Build full URL if needed
+          const imageUrl = normalizedUrl.startsWith('http')
+            ? normalizedUrl
+            : `${window.location.origin}${normalizedUrl}`;
+
           console.log('🖼️ DrawImage: Tentando carregar imagem:', imageUrl);
-          
+
           const response = await fetch(imageUrl);
           if (!response.ok) {
             console.error('❌ DrawImage: Falha ao buscar imagem, status:', response.status);
             return;
           }
-          
+
           const imgBytes = await response.arrayBuffer();
           console.log('✅ DrawImage: Imagem carregada, tamanho:', imgBytes.byteLength);
-          
+
+          if (imgBytes.byteLength === 0) {
+            console.error('❌ DrawImage: Imagem vazia (0 bytes)');
+            return;
+          }
+
+          // Detect format: prefer Content-Type header, fallback to extension
+          const contentType = response.headers.get('content-type') || '';
+          const isPng = contentType.includes('png') || normalizedUrl.toLowerCase().endsWith('.png');
+
           let img;
-          if (url.toLowerCase().endsWith('.png')) {
-            img = await pdfDoc.embedPng(imgBytes);
-          } else {
-            img = await pdfDoc.embedJpg(imgBytes);
+          try {
+            if (isPng) {
+              img = await pdfDoc.embedPng(imgBytes);
+            } else {
+              img = await pdfDoc.embedJpg(imgBytes);
+            }
+          } catch {
+            // Fallback: try the other format
+            console.log('⚠️ DrawImage: Tentando formato alternativo...');
+            try {
+              img = isPng
+                ? await pdfDoc.embedJpg(imgBytes)
+                : await pdfDoc.embedPng(imgBytes);
+            } catch (e2) {
+              console.error('❌ DrawImage: Ambos formatos falharam:', e2);
+              return;
+            }
           }
           page.drawImage(img, { x, y, width: w, height: h });
           console.log('✅ DrawImage: Imagem inserida no PDF com sucesso');
@@ -369,7 +419,7 @@ export default function CreateLaudoForm({ clients, nextOrdemServico, temporalCod
         try {
           let logoImage;
           const logoUrl = adminSettings.companyLogoUrl?.toLowerCase() || '';
-          
+
           if (logoUrl.includes('.png')) {
             logoImage = await pdfDoc.embedPng(logoImageData);
           } else if (logoUrl.includes('.jpg') || logoUrl.includes('.jpeg')) {
@@ -378,28 +428,28 @@ export default function CreateLaudoForm({ clients, nextOrdemServico, temporalCod
             // Tenta PNG como padrão
             logoImage = await pdfDoc.embedPng(logoImageData);
           }
-          
+
           console.log("Logo embedded successfully");
-          
+
           // Logo no cabeçalho (centralizado no topo, 30% maior)
           const headerLogoWidth = 156; // 120 * 1.3 = 30% maior
           const headerLogoHeight = 52; // 40 * 1.3 = 30% maior
           const headerLogoX = (width - headerLogoWidth) / 2;
           const headerLogoY = height - 40; // Ajustado para logo maior
-          
+
           page.drawImage(logoImage, {
             x: headerLogoX,
             y: headerLogoY,
             width: headerLogoWidth,
             height: headerLogoHeight
           });
-          
+
           // Logo marca d'água principal (centro da página)
           const logoWidth = 500; // Dobrado de 250
           const logoHeight = 200; // Dobrado de 100
           const logoX = (width - logoWidth) / 2;
           const logoY = height / 2 - logoHeight / 2;
-          
+
           page.drawImage(logoImage, {
             x: logoX,
             y: logoY,
@@ -407,13 +457,13 @@ export default function CreateLaudoForm({ clients, nextOrdemServico, temporalCod
             height: logoHeight,
             opacity: 0.08 // Bem transparente
           });
-          
+
           // Logo marca d'água adicional (sobre seções cliente e veículo)
           const topLogoWidth = 300;
           const topLogoHeight = 120;
           const topLogoX = (width - topLogoWidth) / 2;
           const topLogoY = height - 250; // Posicionado sobre as seções cliente/veículo
-          
+
           page.drawImage(logoImage, {
             x: topLogoX,
             y: topLogoY,
@@ -421,7 +471,7 @@ export default function CreateLaudoForm({ clients, nextOrdemServico, temporalCod
             height: topLogoHeight,
             opacity: 0.06 // Ainda mais transparente para não atrapalhar
           });
-          
+
         } catch (e) {
           console.error('Error embedding company logo:', e);
         }
@@ -431,7 +481,7 @@ export default function CreateLaudoForm({ clients, nextOrdemServico, temporalCod
       drawRect(40, height - 80, 520, 25, true, 0.75);
       drawText('EMPRESA EXEMPLO INSPEÇÕES LTDA - Rua Exemplo 100 - Cidade Exemplo /RS - Fone: (11) 90000-0000', 45, height - 72, 7);
       drawText('LAUDO INSPEÇÃO TÉCNICA', 220, height - 64, 10);
-      
+
       // CORREÇÃO: Proteção contra "Invalid time value" na dataEmissao
       let dataEmissaoFormatted = '';
       try {
@@ -636,7 +686,7 @@ export default function CreateLaudoForm({ clients, nextOrdemServico, temporalCod
       const especieWords = especieText.split(' ');
       let especieLines = [];
       let currentEspecieLine = '';
-      
+
       for (const word of especieWords) {
         const testLine = currentEspecieLine + (currentEspecieLine ? ' ' : '') + word;
         if (testLine.length <= 14) { // Adjusted for field width
@@ -651,7 +701,7 @@ export default function CreateLaudoForm({ clients, nextOrdemServico, temporalCod
         }
       }
       if (currentEspecieLine) especieLines.push(currentEspecieLine);
-      
+
       // Draw espécie/tipo with multiple lines if needed, ensuring no overlap
       especieLines.slice(0, 2).forEach((line, index) => {
         drawText(line, 42, currentY - 18 - (index * 7), 7);
@@ -663,7 +713,7 @@ export default function CreateLaudoForm({ clients, nextOrdemServico, temporalCod
       const marcaWords = marcaText.split(' ');
       let marcaLines = [];
       let currentMarcaLine = '';
-      
+
       for (const word of marcaWords) {
         const testLine = currentMarcaLine + (currentMarcaLine ? ' ' : '') + word;
         if (testLine.length <= 17) { // Adjusted for field width
@@ -678,7 +728,7 @@ export default function CreateLaudoForm({ clients, nextOrdemServico, temporalCod
         }
       }
       if (currentMarcaLine) marcaLines.push(currentMarcaLine);
-      
+
       // Draw marca/modelo with multiple lines if needed, ensuring no overlap
       marcaLines.slice(0, 2).forEach((line, index) => {
         drawText(line, 162, currentY - 18 - (index * 7), 7);
@@ -704,7 +754,7 @@ export default function CreateLaudoForm({ clients, nextOrdemServico, temporalCod
       drawText(fullLaudo.diametroPinoRei || 'N.A', 252, currentY - 43, 8);
 
       drawText('Data Verif. Pino Rei', 352, currentY - 33, 6);
-      
+
       // CORREÇÃO: Proteção contra "Invalid time value" na dataVerifPinoRei
       let dataVerifPinoReiFormatted = '';
       try {
@@ -718,7 +768,7 @@ export default function CreateLaudoForm({ clients, nextOrdemServico, temporalCod
               dateToConvert = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
             }
           }
-          
+
           const dataVerifPinoReiDate = new Date(dateToConvert);
           if (!isNaN(dataVerifPinoReiDate.getTime())) {
             dataVerifPinoReiFormatted = format(dataVerifPinoReiDate, 'dd/MM/yyyy');
@@ -762,7 +812,7 @@ export default function CreateLaudoForm({ clients, nextOrdemServico, temporalCod
 
       // Process observations text - unify into single paragraph
       const obsText = fullLaudo.observacoes || '';
-      
+
       // Unify LIT observations into single paragraph (remove numbering)
       const unifiedText = obsText
         .replace(/6\.1-\s*/g, '')
@@ -777,7 +827,7 @@ export default function CreateLaudoForm({ clients, nextOrdemServico, temporalCod
       const words = unifiedText.split(' ');
       const obsLines = [];
       let currentLine = '';
-      
+
       // Intelligent word-aware line breaking
       for (const word of words) {
         const testLine = currentLine + (currentLine ? ' ' : '') + word;
@@ -968,8 +1018,8 @@ export default function CreateLaudoForm({ clients, nextOrdemServico, temporalCod
             <label className={styles.label} style={{ color: '#ff4444' }}>Ordem de Serviço</label>
             <input type="text" name="ordemServicoUsuario" value={laudoData.ordemServicoUsuario} onChange={handleLaudoDataChange} required className={styles.input} style={{ borderColor: '#ff4444' }} placeholder="Digite a Ordem de Serviço" />
           </div>
-          <div className={styles.inputGroup}><label className={styles.label}>Cód. Temporal</label>
-            <input type="text" name="codTemporal" value={laudoData.codTemporal} onChange={handleLaudoDataChange} className={styles.input} readOnly style={{ backgroundColor: '#444' }} />
+          <div className={styles.inputGroup}><label className={styles.label}>Cód. Temporal 🎲</label>
+            <input type="text" name="codTemporal" value={laudoData.codTemporal} onChange={handleLaudoDataChange} className={styles.input} placeholder="Código gerado automaticamente" title="Gerado pelo último sorteio da Loteria Federal. Você pode alterar manualmente." />
           </div>
           <div className={styles.inputGroup}><label className={styles.label}>Data de Emissão</label><input type="date" name="dataEmissao" value={laudoData.dataEmissao} onChange={handleLaudoDataChange} required className={styles.input} /></div>
           <div className={styles.inputGroup}><label className={styles.label}>Data de Vencimento</label><input type="text" name="dataVencimento" placeholder="e.g., DD/MM/YYYY" value={laudoData.dataVencimento} onChange={handleLaudoDataChange} className={styles.input} /></div>
@@ -997,7 +1047,7 @@ export default function CreateLaudoForm({ clients, nextOrdemServico, temporalCod
           <div className={styles.inputGroup}><label className={styles.label}>Fabricante Equipamento</label><input name="fabricanteEquipamento" value={laudoData.fabricanteEquipamento} onChange={handleLaudoDataChange} className={styles.input} /></div>
           <div className={styles.inputGroup}><label className={styles.label}>Mês/Ano Fabric.</label><input name="mesAnoFabricEquip" value={laudoData.mesAnoFabricEquip} onChange={handleLaudoDataChange} className={styles.input} /></div>
           <div className={styles.inputGroup}><label className={styles.label}>⌀ - Pino Rei</label><input name="diametroPinoRei" value={laudoData.diametroPinoRei} onChange={handleLaudoDataChange} className={styles.input} /></div>
-          <div className={styles.inputGroup}><label className={styles.label}>Data Verif. Pino Rei</label><input type="text" placeholder="e.g., DD/MM/YYYY" name="dataVerifPinoRei" value={laudoData.dataVerifPinoRei} onChange={handleLaudoDataChange} className={styles.input} /></div>
+          <div className={styles.inputGroup}><label className={styles.label}>Data Verif. Pino Rei</label><input type="date" name="dataVerifPinoRei" value={laudoData.dataVerifPinoRei} onChange={handleLaudoDataChange} className={styles.input} /></div>
         </div>
       </fieldset>
 

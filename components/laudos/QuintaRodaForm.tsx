@@ -23,23 +23,27 @@ interface QuintaRodaFormProps {
   clients: Client[];
   nextOrdemServico: string;
   temporalCode: string;
+  nomeResponsavel?: string;
+  initialClientId?: string;
+  initialPlaca?: string;
 }
 
-export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode }: QuintaRodaFormProps) {
+export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode, nomeResponsavel = '', initialClientId, initialPlaca }: QuintaRodaFormProps) {
   const [selectedClient, setSelectedClient] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState('');
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [equipments, setEquipments] = useState<Equipment[]>([]);
   const [isVehicleLoading, setIsVehicleLoading] = useState(false);
   const [isEquipmentLoading, setIsEquipmentLoading] = useState(false);
-  
+
   const [quintaRodaData, setQuintaRodaData] = useState({
     ...initialQuintaRodaData,
     ordemServico: nextOrdemServico,
     codigoTemporal: temporalCode,
     dataEmissao: new Date().toISOString().split('T')[0],
+    inspetorResponsavel: nomeResponsavel, // Pré-preenchido do perfil do inspetor
   });
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const [showPdfButton, setShowPdfButton] = useState(false);
@@ -50,7 +54,7 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
   useEffect(() => {
     fetchEquipments();
     fetchTemporalCode();
-    
+
     // Restaurar URLs das imagens do localStorage (para sobreviver ao Hot Reload)
     const savedImages = localStorage.getItem('quinta-roda-images');
     if (savedImages) {
@@ -69,6 +73,25 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
       }
     }
   }, []);
+
+  // Auto-selecionar cliente e veículo quando vindo da lista de veículos
+  useEffect(() => {
+    if (initialClientId) {
+      setSelectedClient(initialClientId);
+      setIsVehicleLoading(true);
+      fetch(`/api/vehicles?clientId=${initialClientId}`)
+        .then(res => res.ok ? res.json() : [])
+        .then((vehiclesData: Vehicle[]) => {
+          setVehicles(vehiclesData);
+          if (initialPlaca) {
+            const match = vehiclesData.find((v: Vehicle) => v.placa === initialPlaca);
+            if (match) setSelectedVehicle(match.id);
+          }
+        })
+        .catch(console.error)
+        .finally(() => setIsVehicleLoading(false));
+    }
+  }, [initialClientId, initialPlaca]);
 
   // Função para buscar código temporal real da loteria
   const fetchTemporalCode = async () => {
@@ -92,7 +115,7 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
     const today = new Date();
     const expiration = new Date(expirationDate);
     const diffDays = Math.ceil((expiration.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays <= 0) return 'expired';
     if (diffDays <= 15) return 'critical';
     if (diffDays <= 30) return 'warning';
@@ -148,7 +171,7 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
   const handleVehicleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const vehicleId = event.target.value;
     setSelectedVehicle(vehicleId);
-    
+
     // Auto-preencher placa do veículo
     if (vehicleId) {
       const vehicle = vehicles.find(v => v.id === vehicleId);
@@ -160,7 +183,7 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    
+
     if (name === 'dataValidadeInspecao') {
       // Para input type="date", o valor já vem no formato correto YYYY-MM-DD
       setQuintaRodaData(prev => ({ ...prev, [name]: value }));
@@ -194,7 +217,7 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
 
     setUploadingFiles(true);
     setMessage(`Fazendo upload da imagem para ${fieldName}...`);
-    
+
     console.log('🖼️ DEBUG UPLOAD - Iniciando:', {
       fieldName,
       fileName: file.name,
@@ -228,7 +251,7 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
         urlLength: result.url?.length || 0,
         isValidUrl: !!result.url && result.url.trim() !== ''
       });
-      
+
       // Atualizar estado e salvar no localStorage para persistir durante Hot Reload
       setQuintaRodaData(prev => {
         const newData = { ...prev, [fieldName]: result.url };
@@ -243,19 +266,19 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
           },
           hasAnyImageAfterUpdate: !!(newData.fotoQuintaRoda1Url || newData.fotoQuintaRoda2Url || newData.fotoChassiUrl)
         });
-        
+
         // Persistir URLs no localStorage para sobreviver ao Hot Reload
         localStorage.setItem('quinta-roda-images', JSON.stringify({
           fotoQuintaRoda1Url: newData.fotoQuintaRoda1Url || '',
           fotoQuintaRoda2Url: newData.fotoQuintaRoda2Url || '',
           fotoChassiUrl: newData.fotoChassiUrl || ''
         }));
-        
+
         return newData;
       });
-      
+
       setMessage(`Imagem ${fieldName} enviada com sucesso!`);
-      
+
     } catch (error) {
       console.error('❌ DEBUG UPLOAD - Erro:', error);
       setMessage(`Erro ao enviar imagem ${fieldName}. Tente novamente.`);
@@ -268,7 +291,7 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
   const generateHTML = async (laudoQuintaRodaId: string) => {
     try {
       setMessage('Gerando HTML...');
-      
+
       const response = await fetch(`/api/laudos/quinta-roda/pdf?id=${laudoQuintaRodaId}&format=html`);
 
       if (!response.ok) {
@@ -276,16 +299,16 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
       }
 
       const htmlContent = await response.text();
-      
+
       // Abrir HTML em nova aba
       const newWindow = window.open('', '_blank');
       if (newWindow) {
         newWindow.document.write(htmlContent);
         newWindow.document.close();
       }
-      
+
       setMessage('HTML gerado e aberto em nova aba!');
-      
+
     } catch (error) {
       console.error('Erro ao gerar HTML:', error);
       setMessage('Erro ao gerar HTML. Tente novamente.');
@@ -295,7 +318,7 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
   const generatePDF = async (laudoQuintaRodaId: string) => {
     try {
       setMessage('Gerando PDF...');
-      
+
       const response = await fetch(`/api/laudos/quinta-roda/pdf?id=${laudoQuintaRodaId}`);
 
       if (!response.ok) {
@@ -312,9 +335,9 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
+
       setMessage('PDF gerado e baixado com sucesso!');
-      
+
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
       setMessage('Erro ao gerar PDF. Tente novamente.');
@@ -323,7 +346,7 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedClient || !selectedVehicle) {
       setMessage('Por favor, selecione cliente e veículo.');
       return;
@@ -341,22 +364,22 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
       setMessage('Por favor, selecione cliente e veículo.');
       return;
     }
-    
+
     if (!quintaRodaData.equipmentId) {
       setMessage('Por favor, selecione um equipamento.');
       return;
     }
-    
+
     if (!quintaRodaData.dataValidadeInspecao) {
       setMessage('Por favor, selecione a data de validade da inspeção.');
       return;
     }
-    
+
     if (!quintaRodaData.inspetorResponsavel) {
       setMessage('Por favor, informe o inspetor responsável.');
       return;
     }
-    
+
     if (!quintaRodaData.normasAplicaveis) {
       setMessage('Por favor, informe as normas aplicáveis.');
       return;
@@ -401,14 +424,14 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
           fotoChassi: quintaRodaData.fotoChassiUrl?.length || 0
         }
       });
-      
+
       console.log('📤 DEBUG SUBMIT - Dados completos sendo enviados para API:');
       console.log('- fotoQuintaRoda1Url:', validationData.fotoQuintaRoda1Url || 'EMPTY');
       console.log('- fotoQuintaRoda2Url:', validationData.fotoQuintaRoda2Url || 'EMPTY');
       console.log('- fotoChassiUrl:', validationData.fotoChassiUrl || 'EMPTY');
       console.log('- ordemServico:', validationData.ordemServico);
       console.log('- hasAnyImageInValidationData:', !!(validationData.fotoQuintaRoda1Url || validationData.fotoQuintaRoda2Url || validationData.fotoChassiUrl));
-      
+
       const response = await fetch('/api/laudos/quinta-roda', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -433,11 +456,11 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
           fotoChassiUrl: result.laudoQuintaRoda?.fotoChassiUrl
         }
       });
-      
+
       const laudoQuintaRodaId = result.laudoQuintaRoda.id;
       setMessage('Laudo de Quinta Roda criado com sucesso! Gerando PDF...');
       setCreatedLaudoId(laudoQuintaRodaId);
-      
+
       // Gerar PDF automaticamente após criar o laudo
       try {
         await generatePDF(laudoQuintaRodaId);
@@ -496,11 +519,11 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Veículo*</label>
-            <select 
-              value={selectedVehicle} 
-              onChange={handleVehicleChange} 
-              disabled={!selectedClient || isVehicleLoading} 
-              required 
+            <select
+              value={selectedVehicle}
+              onChange={handleVehicleChange}
+              disabled={!selectedClient || isVehicleLoading}
+              required
               className={styles.select}
             >
               {isVehicleLoading ? (
@@ -521,57 +544,58 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
         <div className={styles.grid3col}>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Placa do Veículo*</label>
-            <input 
-              type="text" 
-              name="placaVeiculo" 
-              value={quintaRodaData.placaVeiculo} 
-              onChange={handleInputChange} 
-              required 
+            <input
+              type="text"
+              name="placaVeiculo"
+              value={quintaRodaData.placaVeiculo}
+              onChange={handleInputChange}
+              required
               className={styles.input}
               placeholder="ABC-1234"
             />
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Ordem de Serviço*</label>
-            <input 
-              type="text" 
-              name="ordemServico" 
-              value={quintaRodaData.ordemServico} 
-              onChange={handleInputChange} 
-              required 
+            <input
+              type="text"
+              name="ordemServico"
+              value={quintaRodaData.ordemServico}
+              onChange={handleInputChange}
+              required
               className={styles.input}
               placeholder="Digite a OS"
             />
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Data de Emissão*</label>
-            <input 
-              type="date" 
-              name="dataEmissao" 
-              value={quintaRodaData.dataEmissao} 
-              onChange={handleInputChange} 
-              required 
+            <input
+              type="date"
+              name="dataEmissao"
+              value={quintaRodaData.dataEmissao}
+              onChange={handleInputChange}
+              required
               className={styles.input}
             />
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Código Temporal (Loteria Federal) 🎲</label>
-            <input 
-              type="text" 
-              name="codigoTemporal" 
-              value={quintaRodaData.codigoTemporal} 
-              className={styles.input} 
-              readOnly 
-              style={{ backgroundColor: '#444' }}
+            <input
+              type="text"
+              name="codigoTemporal"
+              value={quintaRodaData.codigoTemporal}
+              onChange={handleInputChange}
+              className={styles.input}
+              placeholder="Código gerado automaticamente"
+              title="Gerado pelo último sorteio da Loteria Federal. Você pode alterar manualmente."
             />
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Equipamento*</label>
-            <select 
-              name="equipmentId" 
-              value={quintaRodaData.equipmentId} 
-              onChange={handleInputChange} 
-              required 
+            <select
+              name="equipmentId"
+              value={quintaRodaData.equipmentId}
+              onChange={handleInputChange}
+              required
               className={styles.select}
               disabled={isEquipmentLoading}
             >
@@ -584,7 +608,7 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
                     const status = getEquipmentStatus(equipment.expirationDate.toString());
                     const emoji = getStatusEmoji(status);
                     const daysToExpire = Math.ceil((new Date(equipment.expirationDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                    
+
                     return (
                       <option key={equipment.id} value={equipment.id}>
                         {emoji} {equipment.name} {equipment.model} - {equipment.certificateNumber}
@@ -616,36 +640,36 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
         <div className={styles.grid3col}>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Fabricante/Marca*</label>
-            <input 
-              type="text" 
-              name="fabricanteMarca" 
-              value={quintaRodaData.fabricanteMarca} 
-              onChange={handleInputChange} 
-              required 
+            <input
+              type="text"
+              name="fabricanteMarca"
+              value={quintaRodaData.fabricanteMarca}
+              onChange={handleInputChange}
+              required
               className={styles.input}
               placeholder="Ex: Jost, SAF, etc."
             />
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Modelo*</label>
-            <input 
-              type="text" 
-              name="modelo" 
-              value={quintaRodaData.modelo} 
-              onChange={handleInputChange} 
-              required 
+            <input
+              type="text"
+              name="modelo"
+              value={quintaRodaData.modelo}
+              onChange={handleInputChange}
+              required
               className={styles.input}
               placeholder="Ex: JSK37C, etc."
             />
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Nº Identificação*</label>
-            <input 
-              type="text" 
-              name="numeroIdentificacao" 
-              value={quintaRodaData.numeroIdentificacao} 
-              onChange={handleInputChange} 
-              required 
+            <input
+              type="text"
+              name="numeroIdentificacao"
+              value={quintaRodaData.numeroIdentificacao}
+              onChange={handleInputChange}
+              required
               className={styles.input}
               placeholder="Número de identificação da quinta roda"
             />
@@ -664,10 +688,10 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
               </label>
               <div className={styles.radioGroup}>
                 <label className={styles.radioLabel}>
-                  <input 
-                    type="radio" 
-                    name={campo} 
-                    value="SIM" 
+                  <input
+                    type="radio"
+                    name={campo}
+                    value="SIM"
                     checked={quintaRodaData[campo] === 'SIM'}
                     onChange={handleInputChange}
                     className={styles.radio}
@@ -675,10 +699,10 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
                   SIM
                 </label>
                 <label className={styles.radioLabel}>
-                  <input 
-                    type="radio" 
-                    name={campo} 
-                    value="NÃO" 
+                  <input
+                    type="radio"
+                    name={campo}
+                    value="NÃO"
                     checked={quintaRodaData[campo] === 'NÃO'}
                     onChange={handleInputChange}
                     className={styles.radio}
@@ -699,10 +723,10 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
             <label className={styles.label}>Resultado Final*</label>
             <div className={styles.radioGroup}>
               <label className={styles.radioLabel}>
-                <input 
-                  type="radio" 
-                  name="resultadoFinal" 
-                  value="APROVADO" 
+                <input
+                  type="radio"
+                  name="resultadoFinal"
+                  value="APROVADO"
                   checked={quintaRodaData.resultadoFinal === 'APROVADO'}
                   onChange={handleInputChange}
                   className={styles.radio}
@@ -710,10 +734,10 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
                 APROVADO
               </label>
               <label className={styles.radioLabel}>
-                <input 
-                  type="radio" 
-                  name="resultadoFinal" 
-                  value="REPROVADO" 
+                <input
+                  type="radio"
+                  name="resultadoFinal"
+                  value="REPROVADO"
                   checked={quintaRodaData.resultadoFinal === 'REPROVADO'}
                   onChange={handleInputChange}
                   className={styles.radio}
@@ -728,7 +752,7 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
       {/* SEÇÃO 5: Registro Fotográfico (3 fotos conforme layout) */}
       <fieldset className={styles.fieldset}>
         <legend className={styles.legend}>5. Registro Fotográfico</legend>
-        
+
         {/* REGISTRO FOTOGRÁFICO DA QUINTA RODA - 2 fotos lado a lado */}
         <div className={styles.photoSection}>
           <h4 className={styles.photoSectionTitle}>REGISTRO FOTOGRÁFICO DA QUINTA RODA</h4>
@@ -748,7 +772,7 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
                 </div>
               )}
             </div>
-            
+
             <div className={styles.inputGroup}>
               <label className={styles.label}>Segunda Foto da Quinta Roda</label>
               <input
@@ -794,24 +818,24 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
         <div className={styles.grid}>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Normas Aplicáveis*</label>
-            <input 
-              type="text" 
-              name="normasAplicaveis" 
-              value={quintaRodaData.normasAplicaveis} 
-              onChange={handleInputChange} 
-              required 
+            <input
+              type="text"
+              name="normasAplicaveis"
+              value={quintaRodaData.normasAplicaveis}
+              onChange={handleInputChange}
+              required
               className={styles.input}
               placeholder="Portaria nº457/08, Portaria nº70/2008, NBR 8160"
             />
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Inspetor Responsável*</label>
-            <input 
-              type="text" 
-              name="inspetorResponsavel" 
-              value={quintaRodaData.inspetorResponsavel} 
-              onChange={handleInputChange} 
-              required 
+            <input
+              type="text"
+              name="inspetorResponsavel"
+              value={quintaRodaData.inspetorResponsavel}
+              onChange={handleInputChange}
+              required
               className={styles.input}
               placeholder="Nome do inspetor responsável"
             />
@@ -838,7 +862,7 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
         >
           {isSubmitting ? '🔧 Criando Laudo...' : '🔧 Criar Laudo de Quinta Roda'}
         </button>
-        
+
         {showPdfButton && createdLaudoId && (
           <div style={{ display: 'flex', gap: '10px', marginLeft: '10px' }}>
             <button
@@ -865,7 +889,7 @@ export default function QuintaRodaForm({ clients, nextOrdemServico, temporalCode
             </button>
           </div>
         )}
-        
+
         {message && (
           <span className={`${styles.message} ${message.includes('Erro') ? styles.error : styles.success}`}>
             {message}

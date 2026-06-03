@@ -12,6 +12,7 @@ export interface RuidoData {
   marchaLenta4: number;
   marchaLenta5: number;
   marchaLenta6: number;
+  ruidoMaximoMedido?: number;
   resultado: 'APROVADO' | 'REPROVADO';
   inspetorResponsavel: string;
 }

@@ -3,6 +3,8 @@
   border-radius: 8px;
   padding: 1.5rem;
   margin: 1rem 0;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .fieldset {
@@ -310,11 +312,41 @@
   .radioGroup {
     flex-direction: column;
     gap: 0.5rem;
+    width: 100%;
   }
-  
+
   .radioLabel {
     min-width: auto;
-    justify-content: flex-start;
+    width: 100%;
+    min-height: 56px;
+    padding: 0.85rem 1rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border-width: 2px;
+    border-radius: 10px;
+    justify-content: center;
+    gap: 0.75rem;
+    letter-spacing: 0.5px;
+  }
+
+  /* Cor verde para SIM marcado, vermelho para NÃO marcado, cinza para SOLDA/FLANGEADO/APARAFUSADA */
+  .radioLabel:has(input[value="SIM"]:checked) {
+    background: #16a34a;
+    border-color: #15803d;
+    color: #fff;
+  }
+  .radioLabel:has(input[value="NÃO"]:checked),
+  .radioLabel:has(input[value="NAO"]:checked) {
+    background: #dc2626;
+    border-color: #991b1b;
+    color: #fff;
+  }
+  .radioLabel:has(input[value="SOLDA"]:checked),
+  .radioLabel:has(input[value="FLANGEADO"]:checked),
+  .radioLabel:has(input[value="APARAFUSADA"]:checked) {
+    background: #2563eb;
+    border-color: #1d4ed8;
+    color: #fff;
   }
   
   .previewImage {

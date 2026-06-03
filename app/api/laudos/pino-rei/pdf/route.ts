@@ -4,12 +4,26 @@ import { format } from 'date-fns';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { prisma } from '@/lib/prisma';
+import { getSessionFromRequest } from '@/lib/middleware-auth';
 import type { AdminSetting } from '@prisma/client';
+import { getOrCreateLaudoHash } from '@/lib/laudoHash';
+
+function formatEquipmentType(type?: string | null): string {
+  if (!type) return '';
+  const map: Record<string, string> = {
+    PAQUIMETRO: 'PAQUÍMETRO',
+    DECIBELIMETRO: 'DECIBELÍMETRO',
+    RUIDO: 'MEDIDOR DE RUÍDO',
+    CALIBRADOR: 'CALIBRADOR',
+    OUTROS: 'OUTROS',
+  };
+  return map[type] ?? type;
+}
 
 // Função para gerar PDF de laudo Pino Rei
-async function generatePinoReiPDF(laudoId: string, adminSettings: AdminSetting) {
+async function generatePinoReiPDF(laudoId: string, adminSettings: AdminSetting, qrCodeSvg: string = '', documentHash: string = '') {
   console.log('🔧 Gerando PDF de laudo Pino Rei...');
-  
+
   // Buscar dados do laudo Pino Rei com relacionamentos
   const pinoReiData = await prisma.laudoPinoRei.findUnique({
     where: { id: laudoId },
@@ -38,18 +52,34 @@ async function generatePinoReiPDF(laudoId: string, adminSettings: AdminSetting) 
   let logoBase64 = '';
   if (adminSettings.companyLogoUrl) {
     try {
-      const logoUrl = adminSettings.companyLogoUrl.startsWith('http')
-        ? adminSettings.companyLogoUrl
-        : `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}${adminSettings.companyLogoUrl}`;
-      
-      const logoResponse = await fetch(logoUrl);
-      if (logoResponse.ok) {
-        const logoBlob = await logoResponse.blob();
-        const logoArrayBuffer = await logoBlob.arrayBuffer();
-        const logoBytes = new Uint8Array(logoArrayBuffer);
-        const logoType = adminSettings.companyLogoUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
-        const logoBase64String = Buffer.from(logoBytes).toString('base64');
-        logoBase64 = `data:${logoType};base64,${logoBase64String}`;
+      // Tentar ler do filesystem primeiro (para URLs relativas como /uploads/logo.png)
+      if (!adminSettings.companyLogoUrl.startsWith('http')) {
+        const logoPath = join(process.cwd(), 'public', adminSettings.companyLogoUrl);
+        try {
+          const logoBytes = readFileSync(logoPath);
+          const logoType = adminSettings.companyLogoUrl.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+          logoBase64 = `data:${logoType};base64,${logoBytes.toString('base64')}`;
+          console.log('✅ Logo carregado do filesystem:', logoPath);
+        } catch {
+          console.log('⚠️ Falha ao ler logo do filesystem, tentando HTTP...');
+        }
+      }
+
+      // Fallback HTTP (para URLs absolutas)
+      if (!logoBase64) {
+        const logoUrl = adminSettings.companyLogoUrl.startsWith('http')
+          ? adminSettings.companyLogoUrl
+          : `http://localhost:3006${adminSettings.companyLogoUrl}`;
+
+        const logoResponse = await fetch(logoUrl);
+        if (logoResponse.ok) {
+          const logoBlob = await logoResponse.blob();
+          const logoArrayBuffer = await logoBlob.arrayBuffer();
+          const logoBytes = new Uint8Array(logoArrayBuffer);
+          const logoType = adminSettings.companyLogoUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
+          const logoBase64String = Buffer.from(logoBytes).toString('base64');
+          logoBase64 = `data:${logoType};base64,${logoBase64String}`;
+        }
       }
     } catch (e) {
       console.error('Erro ao converter logo para base64:', e);
@@ -135,15 +165,31 @@ async function generatePinoReiPDF(laudoId: string, adminSettings: AdminSetting) 
   // Preparar URLs das fotos - converter para base64 se necessário
   const processImageUrl = async (url: string | null): Promise<string> => {
     if (!url) return '';
-    
+
     try {
       if (url.startsWith('data:')) {
         return url; // Já é base64
       }
-      
-      const fullUrl = url.startsWith('http') ? url : `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}${url}`;
+
+      // Tentar ler do filesystem primeiro (para URLs relativas como /uploads/foto.jpg)
+      if (!url.startsWith('http')) {
+        try {
+          const imgPath = join(process.cwd(), 'public', url);
+          const imgBytes = readFileSync(imgPath);
+          const ext = url.toLowerCase().split('.').pop() || 'jpeg';
+          const mimeMap: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp' };
+          const mimeType = mimeMap[ext] || 'image/jpeg';
+          console.log('✅ Imagem Pino Rei carregada do filesystem:', imgPath);
+          return `data:${mimeType};base64,${imgBytes.toString('base64')}`;
+        } catch {
+          console.log('⚠️ Falha ao ler imagem do filesystem, tentando HTTP...');
+        }
+      }
+
+      // Fallback HTTP
+      const fullUrl = url.startsWith('http') ? url : `http://localhost:3006${url}`;
       const response = await fetch(fullUrl);
-      
+
       if (response.ok) {
         const blob = await response.blob();
         const arrayBuffer = await blob.arrayBuffer();
@@ -155,7 +201,7 @@ async function generatePinoReiPDF(laudoId: string, adminSettings: AdminSetting) 
     } catch (e) {
       console.error('Erro ao processar imagem:', e);
     }
-    
+
     return '';
   };
 
@@ -172,6 +218,11 @@ async function generatePinoReiPDF(laudoId: string, adminSettings: AdminSetting) 
     '{{dataEmissao}}': format(new Date(), 'dd/MM/yyyy'),
     '{{codTemporal}}': pinoReiData.laudo.codTemporal || '',
     '{{equipamento}}': pinoReiData.equipment?.name || 'N/A',
+    '{{equipamentoTipo}}': formatEquipmentType(pinoReiData.equipment?.equipmentType) || 'PAQUÍMETRO',
+    '{{equipamentoModelo}}': pinoReiData.equipment?.model || 'N/A',
+    '{{equipamentoCertificado}}': pinoReiData.equipment?.certificateNumber || 'N/A',
+    '{{equipamentoCalibracao}}': pinoReiData.equipment?.calibrationDate ? format(new Date(pinoReiData.equipment.calibrationDate), 'dd/MM/yyyy') : 'N/A',
+    '{{equipamentoValidade}}': pinoReiData.equipment?.expirationDate ? format(new Date(pinoReiData.equipment.expirationDate), 'dd/MM/yyyy') : 'N/A',
     '{{dataValidade}}': pinoReiData.dataValidadeInspecao || '',
 
     // Logo
@@ -251,6 +302,11 @@ async function generatePinoReiPDF(laudoId: string, adminSettings: AdminSetting) 
 
     // Data de geração
     '{{dataGeracao}}': format(new Date(), 'dd/MM/yyyy HH:mm:ss'),
+
+    // QR Code e Hash
+    '{{qrCodeSvg}}': qrCodeSvg ? `<div style="width: 60px; height: 60px; flex-shrink: 0;">${qrCodeSvg}</div>` : '',
+    '{{documentHash}}': documentHash ? `SHA-256: ${documentHash.substring(0, 40)}...` : '',
+    '{{qrHashValue}}': documentHash,
   };
 
   // Aplicar todas as substituições
@@ -289,16 +345,33 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'ID do laudo é obrigatório' }, { status: 400 });
     }
 
-    // Buscar configurações admin
-    const adminSettingsRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/admin/settings`);
-    if (!adminSettingsRes.ok) {
-      return NextResponse.json({ error: 'Falha ao buscar configurações admin' }, { status: 500 });
+    // Multi-tenancy: buscar adminSettings pelo userId do inspetor logado
+    const session = getSessionFromRequest(request);
+    const userIdFilter = session && session.role !== 'admin' ? session.id : null;
+    let adminSettings: AdminSetting | null = await prisma.adminSetting.findFirst({
+      where: { userId: userIdFilter },
+    });
+    if (!adminSettings) {
+      adminSettings = await prisma.adminSetting.create({
+        data: { companyName: 'Your Company Name', reportTitle: 'LAUDO DE INSPEÇÃO TÉCNICA', userId: userIdFilter }
+      });
     }
-    const adminSettings: AdminSetting = await adminSettingsRes.json();
+
+    // Buscar dados para gerar hash
+    const laudoParam = await prisma.laudoPinoRei.findUnique({
+      where: { id: laudoId },
+      include: { laudo: { include: { vehicle: true } } },
+    });
+    const { hash: docHash, qrCodeSvg } = laudoParam
+      ? await getOrCreateLaudoHash(
+        laudoParam.laudoId, laudoParam.laudo.vehicle.placa,
+        laudoParam.laudo.dataEmissao, 'PINO_REI'
+      )
+      : { hash: '', qrCodeSvg: '' };
 
     // Gerar HTML do Pino Rei
-    const htmlContent = await generatePinoReiPDF(laudoId, adminSettings);
-    const filename = `laudo-pino-rei-${laudoId}.pdf`;
+    const htmlContent = await generatePinoReiPDF(laudoId, adminSettings, qrCodeSvg, docHash);
+    const filename = `laudo-pino-rei-${laudoParam?.laudo.ordemServico || laudoId}.pdf`;
 
     // Se o formato solicitado for HTML, retornar HTML diretamente
     if (format === 'html') {
@@ -322,28 +395,28 @@ export async function GET(request: NextRequest) {
 
     console.log('📄 Criando nova página...');
     const page = await browser.newPage();
-    
+
     // Adicionar tratamento de erro para página
     page.on('error', (error) => {
       console.error('❌ Erro na página:', error);
     });
-    
+
     page.on('pageerror', (error) => {
       console.error('❌ Erro de JavaScript na página:', error);
     });
-    
+
     console.log('🔧 Configurando viewport...');
     await page.setViewport({ width: 794, height: 1123 }); // A4 em pixels
-    
+
     console.log('📄 Carregando HTML content...');
     await page.setContent(htmlContent, {
       waitUntil: 'domcontentloaded',
       timeout: 60000
     });
-    
+
     console.log('⏳ Aguardando estabilização da página...');
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
+
     console.log('📑 Gerando PDF...');
     const pdfBuffer = await page.pdf({
       format: 'A4',
@@ -365,7 +438,7 @@ export async function GET(request: NextRequest) {
     await browser.close();
 
     // Retornar PDF como resposta
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(Buffer.from(pdfBuffer), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`
@@ -375,7 +448,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('❌ Erro ao gerar PDF:', error);
     console.error('❌ Detalhes do erro:', error instanceof Error ? error.message : 'Erro desconhecido');
-    
+
     return NextResponse.json({
       error: 'Falha ao gerar PDF',
       details: error instanceof Error ? error.message : 'Erro desconhecido'

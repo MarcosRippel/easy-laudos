@@ -368,9 +368,9 @@
             </div>
             <div class="company-info-section">
                 <div class="company-info">
-                    <strong>EMPRESA EXEMPLO INSPEÇÕES LTDA</strong><br>
-                    Rua Exemplo 100 - Cidade Exemplo /RS<br>
-                    Fone: (11) 90000-0000
+                    <strong>{{companyName}}</strong><br>
+                    {{companyAddress}}<br>
+                    Fone: {{companyPhone}}
                 </div>
                 <div class="title">🔊 LAUDO DE RUÍDO VEICULAR</div>
                 <div class="subtitle">Relatório de Medição de Ruído</div>
@@ -411,11 +411,11 @@
         <div class="section">
             <div class="section-header">3 - EQUIPAMENTO UTILIZADO</div>
             <div class="equipment-info">
-                <h4>🔧 Decibelímetro / Medidor de Ruído</h4>
+                <h4>🔧 Equipamento Utilizado: Decibelímetro / Medidor de Ruído</h4>
                 <div class="equipment-details">
-                    <div><strong>Nome:</strong> {{equipmentName}}</div>
+                    <div><strong>Fabricante/Marca:</strong> {{equipmentName}}</div>
                     <div><strong>Modelo:</strong> {{equipmentModel}}</div>
-                    <div><strong>Certificado:</strong> {{equipmentCertificate}}</div>
+                    <div><strong>Nº Cert.:</strong> {{equipmentCertificate}}</div>
                     <div><strong>Calibração:</strong> {{equipmentCalibration}}</div>
                     <div><strong>Validade:</strong> {{equipmentExpiration}}</div>
                     <div><strong>Status:</strong> <span style="color: #28a745; font-weight: bold;">✓ CALIBRADO</span></div>
@@ -582,6 +582,9 @@
                     <div class="result-value {{resultClass}}" style="font-size: 11px; padding: 3px;">
                         {{resultado}}
                     </div>
+                    <div style="margin-top: 3px; padding: 3px; background: #fff3cd; border-radius: 3px; text-align: center; font-size: 8px;">
+                        <strong>Ruído Máximo Medido:</strong> {{ruidoMaximoMedido}} dB(A)
+                    </div>
                     <div class="validity-info" style="margin-top: 2px; font-size: 8px;">
                         <strong>Validade:</strong> <span class="validity-date">{{validityDate}}</span>
                     </div>
@@ -613,10 +616,15 @@
             </div>
         </div>
 
-        <div class="footer" style="margin-top: 3px; padding-top: 2px; font-size: 7px;">
-            Documento gerado em {{generationDate}} - Sistema GTS |
-            Laudo emitido conforme medições na data especificada |
-            Validade: <span class="validity-date">{{validityDate}}</span>
+        <div class="footer" style="margin-top: 3px; padding-top: 2px; font-size: 7px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <div style="flex: 1; text-align: left;">
+                Documento gerado em {{generationDate}} - Sistema GTS |
+                Laudo emitido conforme medições na data especificada |
+                Validade: <span class="validity-date">{{validityDate}}</span><br>
+                <span style="font-family: monospace; font-size: 6px; color: #888;">{{documentHash}}</span><br>
+                <span style="font-size: 6px;">Verifique em: generalinspetor.terpens.com.br</span>
+            </div>
+            {{qrCodeSvg}}
         </div>
     </div>
 </body>

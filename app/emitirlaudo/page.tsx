@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import type { Client } from '@prisma/client';
-import Link from 'next/link';
 import styles from './EmitirLaudo.module.css';
 import ChecklistForm from '@/components/laudos/ChecklistForm';
 import CreateLaudoForm from '@/components/laudos/CreateLaudoForm';
@@ -15,22 +15,26 @@ interface CardType {
   title: string;
   icon: string;
   color: string;
-  dedicatedPage?: string;
 }
 
 export default function EmitirLaudoPage() {
-  const [activeCard, setActiveCard] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const urlTipo = searchParams.get('tipo');
+  const urlClientId = searchParams.get('clientId');
+  const urlPlaca = searchParams.get('placa');
+
+  const [activeCard, setActiveCard] = useState<string | null>(urlTipo || null);
   const [clients, setClients] = useState<Client[]>([]);
   const [nextOrdemServico, setNextOrdemServico] = useState('');
   const [temporalCode, setTemporalCode] = useState('');
   const [loading, setLoading] = useState(true);
 
   const cards: CardType[] = [
-    { id: 'CHECKLIST', title: 'Laudo CHECKLIST', icon: '✅', color: 'green', dedicatedPage: '/laudos/checklist' },
+    { id: 'CHECKLIST', title: 'Laudo CHECKLIST', icon: '✅', color: 'green' },
     { id: 'LIT', title: 'Laudo LIT', icon: '📝', color: 'blue' },
     { id: 'RUIDO', title: 'Laudo Ruído', icon: '🔊', color: 'orange' },
-    { id: 'PINO_REI', title: 'Laudo Pino Rei', icon: '🔧', color: 'purple', dedicatedPage: '/laudos/pino-rei' },
-    { id: 'QUINTA_RODA', title: 'Laudo Quinta Roda', icon: '🔧', color: 'red', dedicatedPage: '/laudos/quinta-roda' }
+    { id: 'PINO_REI', title: 'Laudo Pino Rei', icon: '🔧', color: 'purple' },
+    { id: 'QUINTA_RODA', title: 'Laudo Quinta Roda', icon: '🔧', color: 'red' }
   ];
 
   useEffect(() => {
@@ -77,10 +81,12 @@ export default function EmitirLaudoPage() {
       case 'CHECKLIST':
         return (
           <div className={styles.inlineComponent}>
-            <ChecklistForm 
+            <ChecklistForm
               clients={clients}
               nextOrdemServico={nextOrdemServico}
               temporalCode={temporalCode}
+              initialClientId={urlClientId || undefined}
+              initialPlaca={urlPlaca || undefined}
             />
           </div>
         );
@@ -92,6 +98,8 @@ export default function EmitirLaudoPage() {
               clients={clients}
               nextOrdemServico={nextOrdemServico}
               temporalCode={temporalCode}
+              initialClientId={urlClientId || undefined}
+              initialPlaca={urlPlaca || undefined}
             />
           </div>
         );
@@ -103,6 +111,8 @@ export default function EmitirLaudoPage() {
               clients={clients}
               nextOrdemServico={nextOrdemServico}
               temporalCode={temporalCode}
+              initialClientId={urlClientId || undefined}
+              initialPlaca={urlPlaca || undefined}
             />
           </div>
         );
@@ -114,6 +124,8 @@ export default function EmitirLaudoPage() {
               clients={clients}
               nextOrdemServico={nextOrdemServico}
               temporalCode={temporalCode}
+              initialClientId={urlClientId || undefined}
+              initialPlaca={urlPlaca || undefined}
             />
           </div>
         );
@@ -126,6 +138,8 @@ export default function EmitirLaudoPage() {
               clients={clients}
               nextOrdemServico={nextOrdemServico}
               temporalCode={temporalCode}
+              initialClientId={urlClientId || undefined}
+              initialPlaca={urlPlaca || undefined}
             />
           </div>
         );
@@ -157,10 +171,11 @@ export default function EmitirLaudoPage() {
       </div>
 
       {/* Cards de tipos de laudos */}
-      <div className={styles.cardsGrid}>
+      <div data-tutorial="laudo-cards" className={styles.cardsGrid}>
         {cards.map(card => (
           <div key={card.id} className={styles.cardWrapper}>
             <div
+              data-tutorial={`laudo-${card.id.toLowerCase().replace('_', '-')}`}
               className={`${styles.card} ${activeCard === card.id ? styles.active : ''}`}
               onClick={() => handleCardClick(card.id)}
             >
@@ -170,20 +185,13 @@ export default function EmitirLaudoPage() {
                 <div className={styles.activeIndicator}></div>
               )}
             </div>
-            {card.dedicatedPage && (
-              <Link href={card.dedicatedPage} className={styles.dedicatedPageLink}>
-                <button className={styles.dedicatedPageButton}>
-                  📋 Página Dedicada
-                </button>
-              </Link>
-            )}
           </div>
         ))}
       </div>
 
       {/* Área dinâmica */}
       {activeCard && (
-        <div className={styles.dynamicArea}>
+        <div data-tutorial="active-form" className={styles.dynamicArea}>
           {renderDynamicContent()}
         </div>
       )}

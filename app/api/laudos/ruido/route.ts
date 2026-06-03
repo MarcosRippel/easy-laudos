@@ -121,6 +121,7 @@ export async function POST(request: Request) {
           maxAceleracao: calculations.maxAceleracao,
           medianaMarchaLenta: calculations.medianaMarchaLenta,
           maxMarchaLenta: calculations.maxMarchaLenta,
+          ruidoMaximoMedido: body.ruidoMaximoMedido ?? null,
           resultado: body.resultado,
           inspetorResponsavel: body.inspetorResponsavel,
         },

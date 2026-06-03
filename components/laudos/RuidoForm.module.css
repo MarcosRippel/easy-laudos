@@ -3,6 +3,8 @@
   border-radius: 8px;
   padding: 1.5rem;
   margin: 1rem 0;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .fieldset {

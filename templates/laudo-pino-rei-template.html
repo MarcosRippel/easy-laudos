@@ -415,7 +415,7 @@
                 <strong>Cód. Temporal:</strong> {{codTemporal}}
             </div>
             <div class="info-box">
-                <strong>Equipamento:</strong> {{equipamento}}
+                <strong>Equipamento:</strong> {{equipamentoTipo}}
             </div>
         </div>
 
@@ -688,8 +688,10 @@
                 </div>
 
                 <div class="equipment-info">
-                    <strong>Equipamento Utilizado:</strong><br>
-                    Paquimetro: {{equipamento}}
+                    <strong>Equipamento Utilizado:</strong> {{equipamentoTipo}}<br>
+                    <strong>Fabricante/Marca:</strong> {{equipamento}} | <strong>Modelo:</strong> {{equipamentoModelo}}<br>
+                    <strong>Nº Cert.:</strong> {{equipamentoCertificado}}<br>
+                    <strong>Calibração:</strong> {{equipamentoCalibracao}} | <strong>Validade:</strong> {{equipamentoValidade}}
                 </div>
             </div>
             
@@ -737,10 +739,14 @@
         </div>
 
         <!-- RODAPÉ -->
-        <div class="footer">
-            <strong>Nota:</strong> Este relatório não pressupõe qualquer garantia explícita ou implícita dada pela EMPRESA EXEMPLO INSPEÇÕES LTDA, relativo ao Pino Rei e Mesa Inspecionada. Não isentando o fabricante e proprietário de suas responsabilidades quanto aos danos pessoais, materiais e ambientais ou quaisquer perdas provocadas por problemas de instalação, construção, manutenção e operação incorreta do Pino Rei e da Mesa do Pino Rei, bem como do veículo ao qual estão instalados.<br><br>
-            Documento gerado em {{dataGeracao}} - Sistema GTS<br>
-            Este laudo foi emitido com base nas inspeções realizadas na data especificada.
+        <div class="footer" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <div style="flex: 1; text-align: left;">
+                <strong>Nota:</strong> Este relatório não pressupõe qualquer garantia explícita ou implícita dada pela empresa, relativo ao Pino Rei e Mesa Inspecionada.<br><br>
+                Documento gerado em {{dataGeracao}} - Sistema GTS<br>
+                <span style="font-family: monospace; font-size: 6px; color: #888;">{{documentHash}}</span><br>
+                <span style="font-size: 6px;">Verifique autenticidade em: generalinspetor.terpens.com.br/verificar/{{qrHashValue}}</span>
+            </div>
+            {{qrCodeSvg}}
         </div>
     </div>
 </body>

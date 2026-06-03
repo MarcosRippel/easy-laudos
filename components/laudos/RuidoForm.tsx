@@ -30,6 +30,8 @@ interface RuidoFormProps {
   clients: Client[];
   nextOrdemServico: string;
   temporalCode: string;
+  initialClientId?: string;
+  initialPlaca?: string;
 }
 
 const initialRuidoData: Omit<CreateRuidoData, 'clientId' | 'vehicleId'> = {
@@ -51,36 +53,56 @@ const initialRuidoData: Omit<CreateRuidoData, 'clientId' | 'vehicleId'> = {
   marchaLenta4: 0,
   marchaLenta5: 0,
   marchaLenta6: 0,
+  ruidoMaximoMedido: undefined,
   resultado: 'APROVADO',
   inspetorResponsavel: '',
 };
 
-export default function RuidoForm({ clients, nextOrdemServico, temporalCode }: RuidoFormProps) {
+export default function RuidoForm({ clients, nextOrdemServico, temporalCode, initialClientId, initialPlaca }: RuidoFormProps) {
   const [selectedClient, setSelectedClient] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState('');
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [equipments, setEquipments] = useState<Equipment[]>([]);
   const [isVehicleLoading, setIsVehicleLoading] = useState(false);
   const [isEquipmentLoading, setIsEquipmentLoading] = useState(false);
-  
+
   const [ruidoData, setRuidoData] = useState({
     ...initialRuidoData,
     ordemServico: nextOrdemServico,
     codTemporal: temporalCode,
     observacoes: 'Ensaio realizado conforme INSTRUÇÃO NORMATIVA IBAMA Nº 6, DE 8 DE JUNHO DE 2010. NBR 9714 - Veículo rodoviário automotor - Ruído emitido na condição parado',
   });
-  
+
   const [calculations, setCalculations] = useState({
     medianaAceleracao: 0,
     maxAceleracao: 0,
     medianaMarchaLenta: 0,
     maxMarchaLenta: 0,
   });
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const [showPdfButton, setShowPdfButton] = useState(false);
   const [createdLaudoId, setCreatedLaudoId] = useState<string | null>(null);
+
+  // Auto-selecionar cliente e veículo quando vindo da lista de veículos
+  useEffect(() => {
+    if (initialClientId) {
+      setSelectedClient(initialClientId);
+      setIsVehicleLoading(true);
+      fetch(`/api/vehicles?clientId=${initialClientId}`)
+        .then(res => res.ok ? res.json() : [])
+        .then((vehiclesData: Vehicle[]) => {
+          setVehicles(vehiclesData);
+          if (initialPlaca) {
+            const match = vehiclesData.find((v: Vehicle) => v.placa === initialPlaca);
+            if (match) setSelectedVehicle(match.id);
+          }
+        })
+        .catch(console.error)
+        .finally(() => setIsVehicleLoading(false));
+    }
+  }, [initialClientId, initialPlaca]);
 
   // Configuração do gráfico
   const chartData = {
@@ -146,7 +168,7 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode }: R
         borderColor: '#666',
         borderWidth: 1,
         callbacks: {
-          label: function(context: any) {
+          label: function (context: any) {
             return `${context.dataset.label}: ${context.parsed.y.toFixed(1)} dB`;
           }
         }
@@ -162,7 +184,7 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode }: R
           font: {
             size: 12
           },
-          callback: function(value: any) {
+          callback: function (value: any) {
             return value + ' dB';
           }
         },
@@ -234,7 +256,7 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode }: R
     const today = new Date();
     const expiration = new Date(expirationDate);
     const diffDays = Math.ceil((expiration.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays <= 0) return 'expired';
     if (diffDays <= 15) return 'critical';
     if (diffDays <= 30) return 'warning';
@@ -289,26 +311,26 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode }: R
 
   const handleRuidoDataChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    
+
     // Validar valores numéricos de ruído
-    if (name.includes('aceleracao') || name.includes('marchaLenta')) {
+    if (name.includes('aceleracao') || name.includes('marchaLenta') || name === 'ruidoMaximoMedido') {
       // Permitir string vazia para limpeza do campo
       if (value === '') {
-        setRuidoData(prev => ({ ...prev, [name]: 0 }));
+        setRuidoData(prev => ({ ...prev, [name]: name === 'ruidoMaximoMedido' ? undefined : 0 }));
         return;
       }
-      
+
       const numValue = parseFloat(value);
       // Verificar se é um número válido
       if (isNaN(numValue)) {
         return; // Não atualizar se não for um número válido
       }
-      
+
       // Validar range
       if (numValue < RUIDO_MIN_VALUE || numValue > RUIDO_MAX_VALUE) {
         return; // Não atualizar se valor fora do range
       }
-      
+
       setRuidoData(prev => ({ ...prev, [name]: numValue }));
     } else if (name === 'dataVencimento') {
       // Validar formato DD/MM/AAAA para data de vencimento
@@ -327,20 +349,20 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode }: R
     if (!dateRegex.test(dateString)) {
       return false;
     }
-    
+
     const [day, month, year] = dateString.split('/').map(Number);
     const date = new Date(year, month - 1, day);
-    
+
     return date.getFullYear() === year &&
-           date.getMonth() === month - 1 &&
-           date.getDate() === day;
+      date.getMonth() === month - 1 &&
+      date.getDate() === day;
   };
 
   const calculateMedian = (values: number[]): number => {
     const sorted = [...values].sort((a, b) => a - b);
     const mid = Math.floor(sorted.length / 2);
-    return sorted.length % 2 !== 0 
-      ? sorted[mid] 
+    return sorted.length % 2 !== 0
+      ? sorted[mid]
       : (sorted[mid - 1] + sorted[mid]) / 2;
   };
 
@@ -349,7 +371,7 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode }: R
       ruidoData.aceleracao1, ruidoData.aceleracao2, ruidoData.aceleracao3,
       ruidoData.aceleracao4, ruidoData.aceleracao5, ruidoData.aceleracao6
     ];
-    
+
     const marchaLentaValues = [
       ruidoData.marchaLenta1, ruidoData.marchaLenta2, ruidoData.marchaLenta3,
       ruidoData.marchaLenta4, ruidoData.marchaLenta5, ruidoData.marchaLenta6
@@ -366,7 +388,7 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode }: R
   const generateHTML = async (laudoRuidoId: string) => {
     try {
       setMessage('Gerando HTML...');
-      
+
       const response = await fetch('/api/laudos/pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -382,16 +404,16 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode }: R
       }
 
       const htmlContent = await response.text();
-      
+
       // Abrir HTML em nova aba
       const newWindow = window.open('', '_blank');
       if (newWindow) {
         newWindow.document.write(htmlContent);
         newWindow.document.close();
       }
-      
+
       setMessage('HTML gerado e aberto em nova aba!');
-      
+
     } catch (error) {
       console.error('Erro ao gerar HTML:', error);
       setMessage('Erro ao gerar HTML. Tente novamente.');
@@ -400,16 +422,16 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode }: R
 
   const generatePDF = async (laudoRuidoId: string, attempt = 1) => {
     const maxAttempts = 3;
-    
+
     try {
       setMessage(`Gerando PDF... ${attempt > 1 ? `(Tentativa ${attempt})` : ''}`);
       console.log(`🔊 Gerando PDF - Tentativa ${attempt}/${maxAttempts} - Laudo ID: ${laudoRuidoId}`);
-      
+
       // Pequena pausa antes de tentar gerar PDF (evitar problemas de timing)
       if (attempt === 1) {
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
-      
+
       const response = await fetch('/api/laudos/pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -424,21 +446,21 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode }: R
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`❌ PDF Error Response:`, errorText);
-        
+
         // Retry automático para erros temporários
         if (attempt < maxAttempts && (response.status >= 500 || response.status === 404)) {
           console.log(`🔄 Tentando novamente em 2 segundos...`);
           await new Promise(resolve => setTimeout(resolve, 2000));
           return generatePDF(laudoRuidoId, attempt + 1);
         }
-        
+
         throw new Error(`Falha ao gerar PDF (${response.status}): ${errorText}`);
       }
 
       // Download do PDF
       const blob = await response.blob();
       console.log(`✅ PDF Blob Size: ${blob.size} bytes`);
-      
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -447,27 +469,27 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode }: R
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
+
       setMessage('PDF gerado e baixado com sucesso!');
       console.log('✅ PDF baixado com sucesso!');
-      
+
     } catch (error) {
       console.error('❌ Erro ao gerar PDF:', error);
-      
+
       if (attempt < maxAttempts) {
         console.log(`🔄 Tentando novamente em 3 segundos...`);
         setMessage(`Erro na tentativa ${attempt}. Tentando novamente...`);
         await new Promise(resolve => setTimeout(resolve, 3000));
         return generatePDF(laudoRuidoId, attempt + 1);
       }
-      
+
       setMessage(`Erro ao gerar PDF após ${maxAttempts} tentativas. Verifique o console para detalhes.`);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedClient || !selectedVehicle || !ruidoData.equipmentId) {
       setMessage('Por favor, selecione cliente, veículo e equipamento.');
       return;
@@ -512,16 +534,29 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode }: R
       setShowPdfButton(true);
 
       // Reset form after 10 segundos
-      setTimeout(() => {
+      setTimeout(async () => {
         setMessage('');
         setShowPdfButton(false);
         setCreatedLaudoId(null);
         setSelectedClient('');
         setSelectedVehicle('');
         setVehicles([]);
+
+        // Buscar novo número de OS do servidor para evitar duplicatas
+        let newOS = nextOrdemServico;
+        try {
+          const osResponse = await fetch('/api/laudos/next-os');
+          if (osResponse.ok) {
+            const osData = await osResponse.json();
+            newOS = osData.nextOrdemServico;
+          }
+        } catch (error) {
+          console.error('Erro ao buscar próximo OS:', error);
+        }
+
         setRuidoData({
           ...initialRuidoData,
-          ordemServico: nextOrdemServico,
+          ordemServico: newOS,
           codTemporal: temporalCode,
           observacoes: 'Ensaio realizado conforme INSTRUÇÃO NORMATIVA IBAMA Nº 6, DE 8 DE JUNHO DE 2010. NBR 9714 - Veículo rodoviário automotor - Ruído emitido na condição parado',
         });
@@ -555,11 +590,11 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode }: R
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Veículo</label>
-            <select 
-              value={selectedVehicle} 
-              onChange={(e) => setSelectedVehicle(e.target.value)} 
-              disabled={!selectedClient || isVehicleLoading} 
-              required 
+            <select
+              value={selectedVehicle}
+              onChange={(e) => setSelectedVehicle(e.target.value)}
+              disabled={!selectedClient || isVehicleLoading}
+              required
               className={styles.select}
             >
               {isVehicleLoading ? (
@@ -585,57 +620,57 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode }: R
         <div className={styles.grid3col}>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Ordem de Serviço</label>
-            <input 
-              type="text" 
-              name="ordemServico" 
-              value={ruidoData.ordemServico} 
-              onChange={handleRuidoDataChange} 
-              required 
+            <input
+              type="text"
+              name="ordemServico"
+              value={ruidoData.ordemServico}
+              onChange={handleRuidoDataChange}
+              required
               className={styles.input}
               placeholder="Digite a OS"
             />
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Código Temporal (Loteria Federal) 🎲</label>
-            <input 
-              type="text" 
-              name="codTemporal" 
-              value={ruidoData.codTemporal} 
-              onChange={handleRuidoDataChange} 
-              className={styles.input} 
-              readOnly 
-              style={{ backgroundColor: '#444' }}
+            <input
+              type="text"
+              name="codTemporal"
+              value={ruidoData.codTemporal}
+              onChange={handleRuidoDataChange}
+              className={styles.input}
+              placeholder="Código gerado automaticamente"
+              title="Gerado pelo último sorteio da Loteria Federal. Você pode alterar manualmente."
             />
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Data de Emissão</label>
-            <input 
-              type="date" 
-              name="dataEmissao" 
-              value={ruidoData.dataEmissao} 
-              onChange={handleRuidoDataChange} 
-              required 
+            <input
+              type="date"
+              name="dataEmissao"
+              value={ruidoData.dataEmissao}
+              onChange={handleRuidoDataChange}
+              required
               className={styles.input}
             />
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Data de Vencimento</label>
-            <input 
-              type="text" 
-              name="dataVencimento" 
-              placeholder="DD/MM/AAAA" 
-              value={ruidoData.dataVencimento} 
-              onChange={handleRuidoDataChange} 
+            <input
+              type="text"
+              name="dataVencimento"
+              placeholder="DD/MM/AAAA"
+              value={ruidoData.dataVencimento}
+              onChange={handleRuidoDataChange}
               className={styles.input}
             />
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Equipamento</label>
-            <select 
-              name="equipmentId" 
-              value={ruidoData.equipmentId} 
-              onChange={handleRuidoDataChange} 
-              required 
+            <select
+              name="equipmentId"
+              value={ruidoData.equipmentId}
+              onChange={handleRuidoDataChange}
+              required
               className={styles.select}
               disabled={isEquipmentLoading}
             >
@@ -648,7 +683,7 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode }: R
                     const status = getEquipmentStatus(equipment.expirationDate.toString());
                     const emoji = getStatusEmoji(status);
                     const daysToExpire = Math.ceil((new Date(equipment.expirationDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                    
+
                     return (
                       <option key={equipment.id} value={equipment.id}>
                         {emoji} {equipment.name} {equipment.model} - {equipment.certificateNumber}
@@ -683,8 +718,8 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode }: R
           {[1, 2, 3, 4, 5, 6].map(num => (
             <div key={num} className={styles.inputGroup}>
               <label className={styles.label}>Medição {num}</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 name={`aceleracao${num}`}
                 value={ruidoData[`aceleracao${num}` as keyof typeof ruidoData]}
                 onChange={handleRuidoDataChange}
@@ -707,8 +742,8 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode }: R
           {[1, 2, 3, 4, 5, 6].map(num => (
             <div key={num} className={styles.inputGroup}>
               <label className={styles.label}>Medição {num}</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 name={`marchaLenta${num}`}
                 value={ruidoData[`marchaLenta${num}` as keyof typeof ruidoData]}
                 onChange={handleRuidoDataChange}
@@ -738,40 +773,40 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode }: R
         <div className={styles.grid4col}>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Mediana Aceleração</label>
-            <input 
-              type="number" 
+            <input
+              type="number"
               value={calculations.medianaAceleracao.toFixed(1)}
-              readOnly 
+              readOnly
               className={styles.input}
               style={{ backgroundColor: '#444', color: '#ccc' }}
             />
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Máximo Aceleração</label>
-            <input 
-              type="number" 
+            <input
+              type="number"
               value={calculations.maxAceleracao.toFixed(1)}
-              readOnly 
+              readOnly
               className={styles.input}
               style={{ backgroundColor: '#444', color: '#ccc' }}
             />
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Mediana Marcha Lenta</label>
-            <input 
-              type="number" 
+            <input
+              type="number"
               value={calculations.medianaMarchaLenta.toFixed(1)}
-              readOnly 
+              readOnly
               className={styles.input}
               style={{ backgroundColor: '#444', color: '#ccc' }}
             />
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Máximo Marcha Lenta</label>
-            <input 
-              type="number" 
+            <input
+              type="number"
               value={calculations.maxMarchaLenta.toFixed(1)}
-              readOnly 
+              readOnly
               className={styles.input}
               style={{ backgroundColor: '#444', color: '#ccc' }}
             />
@@ -784,12 +819,26 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode }: R
         <legend className={styles.legend}>6. Resultado Final</legend>
         <div className={styles.grid}>
           <div className={styles.inputGroup}>
+            <label className={styles.label}>Ruído Máximo Medido (dB) - Manual</label>
+            <input
+              type="number"
+              name="ruidoMaximoMedido"
+              value={ruidoData.ruidoMaximoMedido ?? ''}
+              onChange={handleRuidoDataChange}
+              className={styles.input}
+              step="0.1"
+              min={RUIDO_MIN_VALUE}
+              max={RUIDO_MAX_VALUE}
+              placeholder="Ex: 78.5"
+            />
+          </div>
+          <div className={styles.inputGroup}>
             <label className={styles.label}>Resultado</label>
-            <select 
-              name="resultado" 
-              value={ruidoData.resultado} 
-              onChange={handleRuidoDataChange} 
-              required 
+            <select
+              name="resultado"
+              value={ruidoData.resultado}
+              onChange={handleRuidoDataChange}
+              required
               className={styles.select}
             >
               <option value="APROVADO">APROVADO</option>
@@ -818,7 +867,7 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode }: R
         >
           {isSubmitting ? '🔊 Criando Laudo...' : '🔊 Criar Laudo de Ruído'}
         </button>
-        
+
         {showPdfButton && createdLaudoId && (
           <div style={{ display: 'flex', gap: '10px', marginLeft: '10px' }}>
             <button
@@ -845,7 +894,7 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode }: R
             </button>
           </div>
         )}
-        
+
         {message && (
           <span className={`${styles.message} ${message.includes('Erro') ? styles.error : styles.success}`}>
             {message}
