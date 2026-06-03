@@ -49,7 +49,7 @@ export default function AdminSettingsForm({ initialSettings }: AdminSettingsForm
         if (!uploadResponse.ok) throw new Error('Logo upload failed.');
 
         const uploadResult = await uploadResponse.json();
-        submissionData.companyLogoUrl = uploadResult.path;
+        submissionData.companyLogoUrl = uploadResult.url;
       }
 
       const response = await fetch('/api/admin/settings', {
@@ -174,7 +174,36 @@ export default function AdminSettingsForm({ initialSettings }: AdminSettingsForm
             </span>
           )}
         </div>
-        {formData.companyLogoUrl && !logoFile && <p style={{ fontSize: '0.8rem', color: '#888', marginTop: '0.5rem' }}>Current: {formData.companyLogoUrl}</p>}
+        {formData.companyLogoUrl && !logoFile && (
+          <div style={{ marginTop: '0.75rem' }}>
+            <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '0.5rem' }}>Logo atual:</p>
+            <img
+              src={formData.companyLogoUrl}
+              alt="Logo atual"
+              style={{
+                maxHeight: '80px',
+                maxWidth: '200px',
+                objectFit: 'contain',
+                borderRadius: '8px',
+                border: '1px solid #444',
+                padding: '4px',
+                background: '#fff'
+              }}
+            />
+          </div>
+        )}
+      </div>
+      <div className={styles.inputGroup}>
+        <label htmlFor="nomeResponsavel" className={styles.label}>👨‍🔧 Nome do Responsável (auto-preenchido nos laudos)</label>
+        <input
+          type="text"
+          id="nomeResponsavel"
+          name="nomeResponsavel"
+          value={(formData as any).nomeResponsavel || ''}
+          onChange={handleChange}
+          className={styles.input}
+          placeholder="Ex: João da Silva - CREA 12345/RS"
+        />
       </div>
       <hr style={{ margin: '1.5rem 0', borderColor: '#444' }} />
       <div>

@@ -4,22 +4,24 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
-    // Find the laudo with the highest 'ordemServico' number
-    const lastLaudo = await prisma.laudo.findFirst({
-      orderBy: {
-        createdAt: 'desc', // Assuming the last created has the highest number
-      },
+    // Buscar todos os laudos e encontrar o maior número de OS
+    // Ordenamos por createdAt desc e pegamos o mais recente, mas verificamos
+    // TODOS os laudos para garantir que não haja colisão
+    const allLaudos = await prisma.laudo.findMany({
+      select: { ordemServico: true },
     });
 
-    let nextNumber = 1;
-    if (lastLaudo && lastLaudo.ordemServico) {
-      const lastNumber = parseInt(lastLaudo.ordemServico, 10);
-      if (!isNaN(lastNumber)) {
-        nextNumber = lastNumber + 1;
+    let maxNumber = 0;
+    for (const laudo of allLaudos) {
+      const num = parseInt(laudo.ordemServico, 10);
+      if (!isNaN(num) && num > maxNumber) {
+        maxNumber = num;
       }
     }
 
-    // Format the number to have leading zeros (e.g., 6 digits long)
+    const nextNumber = maxNumber + 1;
+
+    // Formatar com zeros à esquerda (6 dígitos)
     const nextOrdemServico = String(nextNumber).padStart(6, '0');
 
     return NextResponse.json({ nextOrdemServico });

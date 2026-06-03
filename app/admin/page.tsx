@@ -51,19 +51,19 @@ export default function AdminPage() {
   return (
     <div className={styles.container}>
       <div className={styles.wrapper}>
-        <h2 className={styles.title}>
+        <h2 data-tutorial="admin-header" className={styles.title}>
           👨‍💼 Painel do Inspetor
         </h2>
 
         {/* Seção de Equipamentos */}
-        <div className={styles.equipmentSection}>
+        <div data-tutorial="equipment-section" className={styles.equipmentSection}>
           <h3 className={styles.sectionTitle}>
             🔧 Gerenciamento de Equipamentos
           </h3>
           <p className={styles.sectionDescription}>
             Gerencie todos os equipamentos utilizados nas inspeções, incluindo calibrações e certificações.
           </p>
-          <a href="/admin/equipments" className={styles.equipmentLink}>
+          <a data-tutorial="users-link" href="/admin/equipments" className={styles.equipmentLink}>
             🔧 Gerenciar Equipamentos
           </a>
         </div>

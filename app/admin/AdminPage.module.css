@@ -103,3 +103,52 @@
   color: #dc3545;
   font-size: 1.2rem;
 }
+
+/* ========== RESPONSIVE: MOBILE ========== */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 0.5rem;
+  }
+
+  .wrapper {
+    max-width: 100%;
+  }
+
+  .title {
+    font-size: 1.4rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .equipmentSection {
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 8px;
+  }
+
+  .sectionTitle {
+    font-size: 1.1rem;
+  }
+
+  .sectionDescription {
+    font-size: 0.85rem;
+  }
+
+  .equipmentLink {
+    display: block;
+    text-align: center;
+    padding: 0.875rem 1.25rem;
+    font-size: 0.95rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 0 0.25rem;
+  }
+
+  .equipmentSection {
+    padding: 0.75rem;
+  }
+}

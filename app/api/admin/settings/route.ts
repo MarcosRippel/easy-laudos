@@ -1,15 +1,27 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getSessionFromRequest } from '@/lib/middleware-auth';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    let settings = await prisma.adminSetting.findFirst();
+    const session = getSessionFromRequest(request);
+    if (!session) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Multi-tenancy: admin vê userId=null, inspetores vêem seu próprio userId
+    const userIdFilter = session.role === 'admin' ? null : session.id;
+
+    let settings = await prisma.adminSetting.findFirst({
+      where: { userId: userIdFilter },
+    });
 
     if (!settings) {
       settings = await prisma.adminSetting.create({
         data: {
           companyName: 'Your Company Name',
           reportTitle: 'LAUDO DE INSPEÇÃO TÉCNICA',
+          userId: userIdFilter,
         },
       });
     }
@@ -25,17 +37,31 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const session = getSessionFromRequest(request);
+    if (!session) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
 
-    const currentSettings = await prisma.adminSetting.findFirst();
+    // Multi-tenancy: admin usa userId=null, inspetores usam seu userId
+    const userIdFilter = session.role === 'admin' ? null : session.id;
+
+    let currentSettings = await prisma.adminSetting.findFirst({
+      where: { userId: userIdFilter },
+    });
 
     if (!currentSettings) {
-      return new NextResponse(
-        JSON.stringify({ message: "Settings not found to update." }),
-        { status: 404, headers: { 'Content-Type': 'application/json' } }
-      );
+      // Criar registro para este usuário se não existir
+      currentSettings = await prisma.adminSetting.create({
+        data: {
+          companyName: body.companyName || 'Your Company Name',
+          reportTitle: body.reportTitle || 'LAUDO DE INSPEÇÃO TÉCNICA',
+          userId: userIdFilter,
+        },
+      });
     }
 
     const updatedSettings = await prisma.adminSetting.update({
@@ -49,6 +75,7 @@ export async function POST(request: Request) {
         companyPhone: body.companyPhone,
         companyLogoUrl: body.companyLogoUrl,
         reportTitle: body.reportTitle,
+        nomeResponsavel: body.nomeResponsavel,
       },
     });
 

@@ -1,27 +1,18 @@
 import { NextResponse } from 'next/server';
+import { getTemporalCode } from '@/lib/temporal-code';
 
 export async function GET() {
   try {
-    const response = await fetch('https://loteriascaixa-api.herokuapp.com/api/federal/latest', {
-      next: {
-        revalidate: 3600,
-      },
-    });
+    const code = await getTemporalCode();
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch lottery data');
+    if (!code) {
+      return new NextResponse(
+        JSON.stringify({ message: 'Could not generate temporal code' }),
+        { status: 500 }
+      );
     }
 
-    const data = await response.json();
-
-    const dezenas: string[] = data.dezenas;
-    if (!dezenas || dezenas.length === 0) {
-      throw new Error('Dezenas not found in lottery data');
-    }
-
-    const temporalCode = dezenas.map(d => d.slice(-1)).join('');
-
-    return NextResponse.json({ code: temporalCode });
+    return NextResponse.json({ code });
 
   } catch (error) {
     console.error('Failed to generate temporal code:', error);
