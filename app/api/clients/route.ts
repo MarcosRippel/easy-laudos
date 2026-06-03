@@ -1,11 +1,17 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
 export async function GET() {
   try {
     const clients = await prisma.client.findMany({
       orderBy: {
         name: 'asc',
+      },
+      include: {
+        _count: {
+          select: { vehicles: true, laudos: true },
+        },
       },
     });
     return NextResponse.json(clients);
@@ -22,6 +28,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
+    // Criar client SEM contactWhatsapp (Prisma client pode não conhecer o campo ainda)
     const newClient = await prisma.client.create({
       data: {
         cnpj: body.cnpj,
@@ -36,7 +43,12 @@ export async function POST(request: Request) {
       },
     });
 
-    return new NextResponse(JSON.stringify(newClient), {
+    // Atualizar contactWhatsapp via raw SQL (bypass Prisma runtime validation)
+    if (body.contactWhatsapp) {
+      await prisma.$executeRaw`UPDATE Client SET contactWhatsapp = ${body.contactWhatsapp} WHERE id = ${newClient.id}`;
+    }
+
+    return new NextResponse(JSON.stringify({ ...newClient, contactWhatsapp: body.contactWhatsapp || null }), {
       status: 201,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -46,13 +58,13 @@ export async function POST(request: Request) {
 
     if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
       return new NextResponse(
-        JSON.stringify({ message: 'A client with this CNPJ already exists.' }),
+        JSON.stringify({ message: 'Um cliente com este CNPJ já existe.' }),
         { status: 409, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     return new NextResponse(
-      JSON.stringify({ message: 'Failed to create client' }),
+      JSON.stringify({ message: 'Falha ao criar cliente' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
@@ -61,15 +73,16 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { id, ...updateData } = body;
+    const { id, contactWhatsapp, ...updateData } = body;
 
     if (!id) {
       return new NextResponse(
-        JSON.stringify({ message: 'Client ID is required' }),
+        JSON.stringify({ message: 'ID do cliente é obrigatório' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
+    // Atualizar campos conhecidos pelo Prisma
     const updatedClient = await prisma.client.update({
       where: { id },
       data: {
@@ -85,20 +98,24 @@ export async function PUT(request: Request) {
       },
     });
 
-    return NextResponse.json(updatedClient);
+    // Atualizar contactWhatsapp via raw SQL (bypass Prisma runtime validation)
+    const whatsappValue = contactWhatsapp || null;
+    await prisma.$executeRaw`UPDATE Client SET contactWhatsapp = ${whatsappValue} WHERE id = ${id}`;
+
+    return NextResponse.json({ ...updatedClient, contactWhatsapp: contactWhatsapp || null });
 
   } catch (error) {
     console.error('Failed to update client:', error);
 
     if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
       return new NextResponse(
-        JSON.stringify({ message: 'A client with this CNPJ already exists.' }),
+        JSON.stringify({ message: 'Um cliente com este CNPJ já existe.' }),
         { status: 409, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     return new NextResponse(
-      JSON.stringify({ message: 'Failed to update client' }),
+      JSON.stringify({ message: 'Falha ao atualizar cliente' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
@@ -116,25 +133,37 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // Primeiro deletar todos os veículos vinculados ao cliente
-    await prisma.vehicle.deleteMany({
+    // Buscar todos os laudos do cliente para deletar sub-records
+    const laudos = await prisma.laudo.findMany({
       where: { clientId: id },
+      select: { id: true },
     });
+    const laudoIds = laudos.map(l => l.id);
 
-    // Depois deletar o cliente
-    await prisma.client.delete({
-      where: { id },
-    });
+    if (laudoIds.length > 0) {
+      // Deletar sub-records dos laudos (FK constraints)
+      await prisma.laudoRuido.deleteMany({ where: { laudoId: { in: laudoIds } } });
+      await prisma.laudoPinoRei.deleteMany({ where: { laudoId: { in: laudoIds } } });
+      await prisma.laudoQuintaRoda.deleteMany({ where: { laudoId: { in: laudoIds } } });
+      // Deletar laudos
+      await prisma.laudo.deleteMany({ where: { clientId: id } });
+    }
+
+    // Deletar veículos
+    await prisma.vehicle.deleteMany({ where: { clientId: id } });
+
+    // Deletar o cliente
+    await prisma.client.delete({ where: { id } });
 
     return new NextResponse(
-      JSON.stringify({ message: 'Client deleted successfully' }),
+      JSON.stringify({ message: 'Cliente deletado com sucesso' }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
     console.error('Failed to delete client:', error);
     return new NextResponse(
-      JSON.stringify({ message: 'Failed to delete client' }),
+      JSON.stringify({ message: 'Falha ao deletar cliente' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
