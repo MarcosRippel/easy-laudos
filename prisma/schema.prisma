@@ -10,16 +10,17 @@ datasource db {
 }
 
 model AdminSetting {
-  id             String    @id @default(cuid())
-  companyName    String?
-  companyTaxId   String?
-  companyAddress String?
-  companyPhone   String?
-  companyLogoUrl String?
-  reportTitle    String    @default("LAUDO DE INSPEÇÃO TÉCNICA")
-  userId         String?   // null para admin, preenchido para client_a/client_b
-  user           User?     @relation(fields: [userId], references: [id])
-  updatedAt      DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  companyName      String?
+  companyTaxId     String?
+  companyAddress   String?
+  companyPhone     String?
+  companyLogoUrl   String?
+  reportTitle      String    @default("LAUDO DE INSPEÇÃO TÉCNICA")
+  nomeResponsavel  String?   // Nome do inspetor responsável — auto-preenchido nos laudos
+  userId           String?   // null para admin, preenchido para client_a/client_b
+  user             User?     @relation(fields: [userId], references: [id])
+  updatedAt        DateTime  @updatedAt
 }
 
 model Client {
@@ -33,6 +34,7 @@ model Client {
   addressZip      String?
   addressDistrict String?
   phone           String?
+  contactWhatsapp String?  // WhatsApp/telefone do responsável pelos laudos
   userId          String?  // null para admin, preenchido para client_a/client_b
   user            User?    @relation(fields: [userId], references: [id])
   createdAt       DateTime @default(now())
@@ -93,6 +95,8 @@ model Laudo {
   // Relação com laudo de quinta roda
   laudoQuintaRoda     LaudoQuintaRoda?
 
+  documentHash        String?  @unique // SHA-256 hash para verificação pública via QR Code
+
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 }
@@ -149,6 +153,9 @@ model LaudoRuido {
   maxAceleracao        Decimal?
   medianaMarchaLenta   Decimal?
   maxMarchaLenta       Decimal?
+  
+  // Ruído máximo medido (preenchido manualmente pelo inspetor)
+  ruidoMaximoMedido    Decimal?
   
   // Resultado manual
   resultado            String   // "APROVADO" | "REPROVADO"
