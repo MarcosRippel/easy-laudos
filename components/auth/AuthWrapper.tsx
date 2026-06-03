@@ -33,7 +33,7 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
 
   // Páginas que não precisam de autenticação
   const publicRoutes = ['/login'];
-  const isPublicRoute = publicRoutes.includes(pathname);
+  const isPublicRoute = publicRoutes.includes(pathname) || pathname.startsWith('/verificar');
 
   const checkAuth = async () => {
     try {
