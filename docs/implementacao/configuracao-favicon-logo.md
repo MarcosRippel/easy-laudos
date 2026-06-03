@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Configurar o favicon e metadados Open Graph para que o logo do **General Truck System Inspetor** apareça corretamente quando o link do site (gs.terpens.com.br) for compartilhado em redes sociais, mensagens ou outros aplicativos.
+Configurar o favicon e metadados Open Graph para que o logo do **General Truck System Inspetor** apareça corretamente quando o link do site (generalinspetor.terpens.com.br) for compartilhado em redes sociais, mensagens ou outros aplicativos.
 
 ## Implementação Realizada
 
@@ -29,7 +29,7 @@ Configurado para aparecer quando o link for compartilhado:
 - **Imagem**: `/logo.png`
 
 #### URL Base
-- Configurado para usar `https://gs.terpens.com.br` como base
+- Configurado para usar `https://generalinspetor.terpens.com.br` como base
 - Pode ser sobrescrito pela variável de ambiente `NEXT_PUBLIC_BASE_URL`
 
 ## Arquivos Necessários
@@ -49,7 +49,7 @@ Configurado para aparecer quando o link for compartilhado:
 O favicon aparece automaticamente na aba do navegador quando o usuário acessa o site.
 
 ### 2. Compartilhamento de Links
-Quando alguém compartilha o link `https://gs.terpens.com.br` em:
+Quando alguém compartilha o link `https://generalinspetor.terpens.com.br` em:
 - **WhatsApp**: Mostra o logo, título e descrição
 - **Facebook**: Mostra o logo, título e descrição
 - **Twitter/X**: Mostra o logo, título e descrição
@@ -70,7 +70,7 @@ Os metadados são lidos automaticamente pelos serviços de compartilhamento atra
 ## Verificação
 
 ### Testar o Favicon
-1. Acesse `https://gs.terpens.com.br`
+1. Acesse `https://generalinspetor.terpens.com.br`
 2. Verifique se o favicon aparece na aba do navegador
 
 ### Testar Compartilhamento
@@ -112,7 +112,7 @@ Edite o arquivo `app/layout.tsx` na seção `export const metadata`:
 Crie um arquivo `.env.local` na raiz do projeto:
 
 ```env
-NEXT_PUBLIC_BASE_URL=https://gs.terpens.com.br
+NEXT_PUBLIC_BASE_URL=https://generalinspetor.terpens.com.br
 ```
 
 Isso permite configurar a URL base dinamicamente sem alterar o código.
