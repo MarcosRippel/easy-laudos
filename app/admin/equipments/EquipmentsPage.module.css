@@ -5,6 +5,8 @@
   padding: 1rem;
   color: #f0f0f0;
   background: transparent;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .header {
@@ -431,6 +433,19 @@
 @media (max-width: 480px) {
   .statsGrid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+
+  .statCard {
+    padding: 1rem 0.5rem;
+  }
+
+  .statNumber {
+    font-size: 1.5rem;
+  }
+
+  .statLabel {
+    font-size: 0.75rem;
   }
 
   .equipmentActions {

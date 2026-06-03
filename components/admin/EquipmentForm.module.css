@@ -8,6 +8,195 @@
   width: 100%;
 }
 
+/* ─── Upload / Extração por IA ─── */
+
+.uploadSection {
+  margin-bottom: 1.75rem;
+  padding-bottom: 1.75rem;
+  border-bottom: 1px dashed #444;
+}
+
+.uploadSectionLabel {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #ccc;
+  margin: 0 0 0.6rem 0;
+}
+
+.uploadOptional {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: #666;
+}
+
+.uploadZone {
+  border: 2px dashed #555;
+  border-radius: 10px;
+  padding: 2rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  background: #222;
+  transition: border-color 0.2s, background 0.2s;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.uploadZone:hover,
+.uploadZone:focus {
+  border-color: #0d6efd;
+  background: rgba(13, 110, 253, 0.05);
+  outline: none;
+}
+
+.uploadZoneDragover {
+  border-color: #0d6efd !important;
+  background: rgba(13, 110, 253, 0.1) !important;
+  transform: scale(1.01);
+}
+
+.uploadZoneContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.uploadIcon {
+  font-size: 2.2rem;
+}
+
+.uploadTitle {
+  margin: 0;
+  color: #ddd;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.uploadSubtitle {
+  margin: 0;
+  color: #888;
+  font-size: 0.82rem;
+}
+
+.uploadFormats {
+  font-size: 0.75rem;
+  color: #555;
+  margin-top: 0.2rem;
+}
+
+/* Estado: analisando */
+.uploadZoneAnalyzing {
+  border: 2px solid #0d6efd;
+  border-radius: 10px;
+  padding: 1.5rem 1rem;
+  background: rgba(13, 110, 253, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: #7ab8ff;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Spinner */
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(13, 110, 253, 0.25);
+  border-top-color: #0d6efd;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Preview do arquivo selecionado */
+.uploadPreview {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #2d2d33;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 0.65rem 0.9rem;
+}
+
+.uploadPreviewIcon {
+  font-size: 1.3rem;
+}
+
+.uploadPreviewName {
+  flex: 1;
+  font-size: 0.85rem;
+  color: #ccc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.removeFileBtn {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  transition: color 0.2s, background 0.2s;
+}
+
+.removeFileBtn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Badges de resultado */
+.extractBadge {
+  margin-top: 0.65rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.83rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.extract_success {
+  background: rgba(40, 167, 69, 0.12);
+  border: 1px solid #28a745;
+  color: #5dd879;
+}
+
+.extract_partial {
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid #ffc107;
+  color: #ffd454;
+}
+
+.extract_error {
+  background: rgba(220, 53, 69, 0.1);
+  border: 1px solid #dc3545;
+  color: #f8807e;
+}
+
+.reviewHint {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: #888;
+  text-align: center;
+}
+
+.hiddenInput {
+  display: none;
+}
+
+/* ─── Campos do formulário ─── */
+
 .inputGroup {
   display: flex;
   flex-direction: column;
@@ -21,7 +210,8 @@
   font-weight: 500;
 }
 
-.input, .select {
+.input,
+.select {
   padding: 0.75rem;
   font-size: 1rem;
   background-color: #333;
@@ -31,7 +221,8 @@
   transition: border-color 0.3s ease;
 }
 
-.input:focus, .select:focus {
+.input:focus,
+.select:focus {
   outline: none;
   border-color: #007bff;
   box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
@@ -126,7 +317,8 @@
   }
 }
 
-.submitButton, .cancelButton {
+.submitButton,
+.cancelButton {
   padding: 0.75rem 1.5rem;
   font-size: 1rem;
   border: none;

@@ -5,7 +5,7 @@ export interface Equipment {
   certificateNumber: string;
   calibrationDate: Date;
   expirationDate: Date;
-  equipmentType: 'DECIBELIMETRO' | 'CALIBRADOR' | 'PAQUIMETRO' | 'OUTROS';
+  equipmentType: 'DECIBELIMETRO' | 'RUIDO' | 'CALIBRADOR' | 'PAQUIMETRO' | 'OUTROS';
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -27,7 +27,7 @@ export interface CreateEquipmentData {
   certificateNumber: string;
   calibrationDate: string;
   expirationDate: string;
-  equipmentType: 'DECIBELIMETRO' | 'CALIBRADOR' | 'PAQUIMETRO' | 'OUTROS';
+  equipmentType: 'DECIBELIMETRO' | 'RUIDO' | 'CALIBRADOR' | 'PAQUIMETRO' | 'OUTROS';
   isActive?: boolean;
 }
 
