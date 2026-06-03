@@ -1,5 +1,41 @@
 node_modules
 
-# Feedback storage
+# Env / segredos
+.env
+.env.local
+.env.production
+.env*.local
+
+# Next.js build
+/.next/
+/out/
+tsconfig.tsbuildinfo
+
+# Banco SQLite (dev) e backups
+*.db
+*.db-journal
+*.db.backup*
+dev.db
+
+# Logs
+/logs/
+*.log
+
+# Feedback storage / uploads em runtime
 data/
-public/uploads/feedback/
+public/uploads/
+
+# Screenshots / rascunhos
+/_screenshots/
+
+# IDE / tooling
+.vscode/
+.overclock-app/
+.claude/
+*.code-workspace
+
+# Repos aninhados / pastas locais de asset e teste (nao versionar)
+/general-emissor/
+/0 Logos/
+/arquivos para teste/
+/resultado de laudos do cliente cliente/
