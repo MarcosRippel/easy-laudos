@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Client, Vehicle, Laudo, AdminSetting } from '@prisma/client';
 import { PDFDocument, rgb } from 'pdf-lib';
 import { download } from '@/lib/download';
@@ -13,9 +13,11 @@ interface ChecklistFormProps {
   clients: Client[];
   nextOrdemServico: string;
   temporalCode: string;
+  initialClientId?: string;
+  initialPlaca?: string;
 }
 
-export default function ChecklistForm({ clients, nextOrdemServico, temporalCode }: ChecklistFormProps) {
+export default function ChecklistForm({ clients, nextOrdemServico, temporalCode, initialClientId, initialPlaca }: ChecklistFormProps) {
   const [selectedClient, setSelectedClient] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState('');
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -28,33 +30,80 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
   const [downloadLaudoId, setDownloadLaudoId] = useState('');
   const [keySequence, setKeySequence] = useState('');
   const [showShortcutFeedback, setShowShortcutFeedback] = useState(false);
+  const [tapCount, setTapCount] = useState(0);
+  const tapResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 5 toques rápidos em área vazia = mesmo efeito de "///"
+  const handleEmptyAreaTap = (e: React.PointerEvent<HTMLFormElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('input, select, textarea, button, label, a, [role="button"]')) {
+      return;
+    }
+    setTapCount(prev => {
+      const next = prev + 1;
+      if (tapResetTimer.current) {
+        clearTimeout(tapResetTimer.current);
+        tapResetTimer.current = null;
+      }
+      if (next >= 5) {
+        markAllAsOk();
+        return 0;
+      }
+      tapResetTimer.current = setTimeout(() => setTapCount(0), 1200);
+      return next;
+    });
+  };
+
+  useEffect(() => () => {
+    if (tapResetTimer.current) clearTimeout(tapResetTimer.current);
+  }, []);
+
+  // Auto-selecionar cliente e veículo quando vindo da lista de veículos
+  useEffect(() => {
+    if (initialClientId) {
+      setSelectedClient(initialClientId);
+      setChecklistData(prev => ({ ...prev, clientId: initialClientId }));
+      setIsVehicleLoading(true);
+      fetch(`/api/vehicles?clientId=${initialClientId}`)
+        .then(res => res.ok ? res.json() : [])
+        .then((vehiclesData: Vehicle[]) => {
+          setVehicles(vehiclesData);
+          if (initialPlaca) {
+            const match = vehiclesData.find((v: Vehicle) => v.placa === initialPlaca);
+            if (match) setSelectedVehicle(match.id);
+          }
+        })
+        .catch(console.error)
+        .finally(() => setIsVehicleLoading(false));
+    }
+  }, [initialClientId, initialPlaca]);
 
   const handleClientChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
     const clientId = event.target.value;
-    console.log('🏢 [CHECKLIST] Cliente selecionado:', clientId);
-    
+    console.log('ðŸ¢ [CHECKLIST] Cliente selecionado:', clientId);
+
     setSelectedClient(clientId);
     setSelectedVehicle('');
     setVehicles([]);
     setChecklistData(prev => ({ ...prev, clientId }));
 
     if (clientId) {
-      console.log('🚚 [CHECKLIST] Carregando veículos para cliente:', clientId);
+      console.log('ðŸšš [CHECKLIST] Carregando veículos para cliente:', clientId);
       setIsVehicleLoading(true);
       try {
         const response = await fetch(`/api/vehicles?clientId=${clientId}`);
-        console.log('📡 [CHECKLIST] Resposta de veículos:', {
+        console.log('ðŸ“¡ [CHECKLIST] Resposta de veículos:', {
           status: response.status,
           ok: response.ok
         });
-        
+
         if (!response.ok) throw new Error('Failed to fetch vehicles');
-        
+
         const vehiclesData = await response.json();
-        console.log('✅ [CHECKLIST] Veículos carregados:', vehiclesData.length);
+        console.log('âœ… [CHECKLIST] Veículos carregados:', vehiclesData.length);
         setVehicles(vehiclesData);
       } catch (error) {
-        console.error('❌ [CHECKLIST] Erro ao carregar veículos:', error);
+        console.error('âŒ [CHECKLIST] Erro ao carregar veículos:', error);
       } finally {
         setIsVehicleLoading(false);
       }
@@ -137,17 +186,17 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
 
   // Função para marcar todos os checkboxes como "OK" (verde)
   const markAllAsOk = () => {
-    console.log('🎯 [ATALHO] Marcando todos os campos como OK');
+    console.log('ðŸŽ¯ [ATALHO] Marcando todos os campos como OK');
     const updatedData = { ...checklistData };
     checklistFields.forEach(field => {
       updatedData[field] = 'OK';
     });
     setChecklistData(updatedData);
-    
+
     // Mostrar feedback visual
     setShowShortcutFeedback(true);
     setTimeout(() => setShowShortcutFeedback(false), 2000);
-    console.log('✅ [ATALHO] Todos os campos marcados como OK');
+    console.log('âœ… [ATALHO] Todos os campos marcados como OK');
   };
 
   // Effect para detectar o atalho "///"
@@ -155,27 +204,27 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
     const handleKeyDown = (event: KeyboardEvent) => {
       // Detecta apenas a tecla "/"
       if (event.key === '/') {
-        console.log('🔍 [ATALHO] Tecla "/" detectada');
+        console.log('ðŸ” [ATALHO] Tecla "/" detectada');
         event.preventDefault();
-        
+
         setKeySequence(prev => {
           const newSequence = prev + '/';
-          console.log('🔢 [ATALHO] Sequência atual:', newSequence);
-          
+          console.log('ðŸ”¢ [ATALHO] Sequência atual:', newSequence);
+
           // Se chegou a "///", marcar todos como OK e resetar a sequência
           if (newSequence === '///') {
-            console.log('🎉 [ATALHO] Sequência completa detectada!');
+            console.log('ðŸŽ‰ [ATALHO] Sequência completa detectada!');
             markAllAsOk();
             setTimeout(() => setKeySequence(''), 100); // Reset após marcar
             return '';
           }
-          
+
           // Limpar sequência após 1 segundo se não completar
           setTimeout(() => {
-            console.log('⏰ [ATALHO] Timeout - limpando sequência');
+            console.log('â° [ATALHO] Timeout - limpando sequência');
             setKeySequence('');
           }, 1000);
-          
+
           return newSequence;
         });
       } else {
@@ -184,29 +233,29 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       }
     };
 
-    console.log('🎧 [ATALHO] Event listener adicionado');
+    console.log('ðŸŽ§ [ATALHO] Event listener adicionado');
     // Adicionar listener quando o componente estiver ativo
     document.addEventListener('keydown', handleKeyDown);
-    
+
     return () => {
-      console.log('🔥 [ATALHO] Event listener removido');
+      console.log('ðŸ”¥ [ATALHO] Event listener removido');
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('🚀 [CHECKLIST] Iniciando handleSubmit');
-    console.log('📋 [CHECKLIST] selectedClient:', selectedClient);
-    console.log('🚚 [CHECKLIST] selectedVehicle:', selectedVehicle);
-    
+    console.log('ðŸš€ [CHECKLIST] Iniciando handleSubmit');
+    console.log('ðŸ“‹ [CHECKLIST] selectedClient:', selectedClient);
+    console.log('ðŸšš [CHECKLIST] selectedVehicle:', selectedVehicle);
+
     if (!selectedClient || !selectedVehicle) {
-      console.log('❌ [CHECKLIST] Erro: Cliente ou veículo não selecionado');
+      console.log('âŒ [CHECKLIST] Erro: Cliente ou veículo não selecionado');
       setMessage('Por favor, selecione um cliente e um veículo.');
       return;
     }
 
-    console.log('✅ [CHECKLIST] Cliente e veículo válidos, prosseguindo...');
+    console.log('âœ… [CHECKLIST] Cliente e veículo válidos, prosseguindo...');
     setIsSubmitting(true);
     setMessage('Criando laudo CHECKLIST...');
 
@@ -218,8 +267,8 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
         laudoType: 'CHECKLIST',
         dataEmissao: checklistData.dataEmissao || new Date().toISOString().split('T')[0],
       };
-      
-      console.log('📦 [CHECKLIST] Dados de submissão preparados:', {
+
+      console.log('ðŸ“¦ [CHECKLIST] Dados de submissão preparados:', {
         ordemServico: submissionData.ordemServico,
         clientId: selectedClient,
         vehicleId: selectedVehicle,
@@ -228,14 +277,14 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
         totalFields: Object.keys(submissionData).length
       });
 
-      console.log('🌐 [CHECKLIST] Fazendo requisição para /api/laudos/checklist');
+      console.log('ðŸŒ [CHECKLIST] Fazendo requisição para /api/laudos/checklist');
       const response = await fetch('/api/laudos/checklist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(submissionData),
       });
 
-      console.log('📡 [CHECKLIST] Resposta da API:', {
+      console.log('ðŸ“¡ [CHECKLIST] Resposta da API:', {
         status: response.status,
         statusText: response.statusText,
         ok: response.ok
@@ -243,25 +292,25 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.log('❌ [CHECKLIST] Erro na resposta da API:', errorData);
+        console.log('âŒ [CHECKLIST] Erro na resposta da API:', errorData);
         throw new Error(errorData.message || 'Falha ao criar laudo.');
       }
 
       const newLaudo = await response.json();
-      console.log('✅ [CHECKLIST] Laudo criado com sucesso:', {
+      console.log('âœ… [CHECKLIST] Laudo criado com sucesso:', {
         id: newLaudo.id,
         ordemServico: newLaudo.ordemServico
       });
-      
-      setMessage('Laudo CHECKLIST criado com sucesso! Gerando HTML...');
+
+      setMessage('Laudo CHECKLIST criado com sucesso! Gerando PDF...');
 
       // Gerar HTML automaticamente
-      console.log('📄 [CHECKLIST] Iniciando geração de PDF para laudo ID:', newLaudo.id);
+      console.log('ðŸ“„ [CHECKLIST] Iniciando geração de PDF para laudo ID:', newLaudo.id);
       await generateChecklistHtmlToPdf(newLaudo.id);
 
       // Reset form after success
       setTimeout(() => {
-        console.log('🔄 [CHECKLIST] Resetando formulário');
+        console.log('ðŸ”„ [CHECKLIST] Resetando formulário');
         setMessage('');
         setSelectedClient('');
         setSelectedVehicle('');
@@ -270,7 +319,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       }, 2000);
 
     } catch (error) {
-      console.error('💥 [CHECKLIST] Erro no handleSubmit:', error);
+      console.error('ðŸ’¥ [CHECKLIST] Erro no handleSubmit:', error);
       setMessage(error instanceof Error ? `Erro: ${error.message}` : 'Erro desconhecido.');
     } finally {
       setIsSubmitting(false);
@@ -292,8 +341,8 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
               onChange={(e) => handleInputChange(field, e.target.value as CheckStatus)}
             />
             <span className={`${styles.optionText} ${styles[option.toLowerCase()]}`}>
-              {option === 'OK' ? '✓' : option === 'NA' ? 'N.A' : '✗'}
-            </span>
+               {option === 'OK' ? '\u2713' : option === 'NA' ? 'N.A' : '\u2717'}
+             </span>
           </label>
         ))}
       </div>
@@ -315,994 +364,40 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
 
   const generateChecklistHtml = async (laudoId: string) => {
     try {
-      console.log('🌐 [CHECKLIST-HTML] Iniciando geração de HTML para ID:', laudoId);
-      
-      console.log('📡 [CHECKLIST-HTML] Buscando dados do laudo e configurações admin');
-      const [laudoDetailsRes, adminSettingsRes] = await Promise.all([
-        fetch(`/api/laudos/${laudoId}`),
-        fetch('/api/admin/settings')
-      ]);
+      console.log('ðŸŒ [CHECKLIST-HTML] Iniciando geração de HTML via servidor para ID:', laudoId);
+      setMessage('Gerando HTML...');
 
-      console.log('📡 [CHECKLIST-HTML] Respostas recebidas:', {
-        laudoDetailsStatus: laudoDetailsRes.status,
-        adminSettingsStatus: adminSettingsRes.status,
-        laudoDetailsOk: laudoDetailsRes.ok,
-        adminSettingsOk: adminSettingsRes.ok
+      // Usar a API route server-side para gerar HTML completo com QR code e hash
+      const response = await fetch('/api/laudos/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ laudoId, format: 'html' }),
       });
 
-      if (!laudoDetailsRes.ok || !adminSettingsRes.ok) {
-        console.log('❌ [CHECKLIST-HTML] Erro ao buscar dados');
-        throw new Error('Falha ao buscar dados para geração do HTML.');
-      }
-
-      const fullLaudo: Laudo & { client: Client; vehicle: Vehicle } = await laudoDetailsRes.json();
-      const adminSettings: AdminSetting = await adminSettingsRes.json();
-      
-      console.log('✅ [CHECKLIST-HTML] Dados carregados:', {
-        laudoId: fullLaudo.id,
-        ordemServico: fullLaudo.ordemServico,
-        clientName: fullLaudo.client.name,
-        vehiclePlaca: fullLaudo.vehicle.placa,
-        hasLogo: !!adminSettings.companyLogoUrl
+      console.log('ðŸ“¡ [CHECKLIST-HTML] Resposta da API:', {
+        status: response.status,
+        ok: response.ok,
+        contentType: response.headers.get('content-type')
       });
-      
-      // 🔧 CORREÇÃO: Converter logo para base64 para funcionar no HTML baixado
-      let logoBase64 = '';
-      if (adminSettings.companyLogoUrl) {
-        try {
-          const logoResponse = await fetch(adminSettings.companyLogoUrl);
-          if (logoResponse.ok) {
-            const logoBlob = await logoResponse.blob();
-            const logoArrayBuffer = await logoBlob.arrayBuffer();
-            const logoBytes = new Uint8Array(logoArrayBuffer);
-            
-            // Determinar o tipo MIME da imagem
-            const logoType = adminSettings.companyLogoUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
-            
-            // Converter para base64
-            const logoBase64String = btoa(String.fromCharCode(...logoBytes));
-            logoBase64 = `data:${logoType};base64,${logoBase64String}`;
-            
-            console.log('✅ Logo convertido para base64 com sucesso');
-          } else {
-            console.warn('⚠️ Falha ao buscar logo:', adminSettings.companyLogoUrl);
-          }
-        } catch (e) {
-          console.error('❌ Erro ao converter logo para base64:', e);
-        }
-      }
-      
-      console.log('🔍 DEBUG - Logo Status:', {
-        companyLogoUrl: adminSettings.companyLogoUrl,
-        hasLogo: !!adminSettings.companyLogoUrl,
-        logoBase64Length: logoBase64.length
-      });
-      
-      // Parse dos dados do checklist das observações
-      const observacoes = fullLaudo.observacoes || '';
-      let checklistData: any = {};
-      
-      try {
-        const checklistStart = observacoes.indexOf('--- DADOS CHECKLIST ---');
-        if (checklistStart !== -1) {
-          const jsonStart = observacoes.indexOf('{', checklistStart);
-          if (jsonStart !== -1) {
-            const jsonData = observacoes.substring(jsonStart);
-            checklistData = JSON.parse(jsonData);
-          }
-        }
-      } catch (e) {
-        console.error('Erro ao parse dos dados do checklist:', e);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log('âŒ [CHECKLIST-HTML] Erro na resposta:', errorText);
+        throw new Error('Falha ao gerar HTML no servidor.');
       }
 
-      // Função helper para mapeamento com fallback
-      const mapMedicaoValue = (value: string, defaultType: 'NA' | 'X' = 'NA') => {
-        return value && value.trim() ? value : defaultType;
-      };
-
-      // SVG do pneu convertido para base64 para compatibilidade com HTML standalone
-      const pneuSvgBase64 = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8IS0tIENpcmN1bG8gZXh0ZXJubyBkbyBwbmV1IC0tPgogIDxjaXJjbGUgY3g9IjMwIiBjeT0iMzAiIHI9IjI4IiBmaWxsPSIjMWExYTFhIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDwhLS0gQ2lyY3VsbyBpbnRlcm5vIC0tPgogIDxjaXJjbGUgY3g9IjMwIiBjeT0iMzAiIHI9IjIyIiBmaWxsPSIjMmEyYTJhIiBzdHJva2U9IiM0NDQiIHN0cm9rZS13aWR0aD0iMSIvPgogIDwhLS0gUGFkcsOjbyBkZSBzdWxjb3MgZG8gcG5ldSAtLT4KICA8ZyBzdHJva2U9IiM1NTUiIHN0cm9rZS13aWR0aD0iMSIgZmlsbD0ibm9uZSI+CiAgICA8cGF0aCBkPSJNIDEwIDMwIFEgMzAgMjAgNTAgMzAiLz4KICAgIDxwYXRoIGQ9Ik0gMTAgMzAgUSAzMCA0MCA1MCAzMCIvPgogICAgPHBhdGggZD0iTSAzMCA4IFEgMjAgMzAgMzAgNTIiLz4KICAgIDxwYXRoIGQ9Ik0gMzAgOCBRIDQwIDMwIDMwIDUyIi8+CiAgPC9nPgogIDwhLS0gQ2VudHJvIGRvIHBuZXUgLS0+CiAgPGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMTUiIGZpbGw9IiMzMzMiIHN0cm9rZT0iIzU1NSIgc3Ryb2tlLXdpZHRoPSIxIi8+Cjwvc3ZnPg==';
-
-      // Função para renderizar checkbox no HTML
-      const renderCheckbox = (value: string) => {
-        if (value === 'OK') return '✓';
-        if (value === 'NOK') return '✗';
-        if (value === 'NA') return 'N.A';
-        return '';
-      };
-
-      // Helper para renderizar campo com checkbox GRUDADA no texto
-      const renderField = (label: string, field: string) => {
-        const value = checklistData[field] || '';
-        const cssClass = value === 'OK' ? 'ok' : value === 'NOK' ? 'nok' : 'na';
-        return `
-          <div class="field">
-            ${label} <span class="checkbox ${cssClass}">${renderCheckbox(value)}</span>
-          </div>
-        `;
-      };
-
-      // Helper para renderizar campo de texto
-      const renderTextField = (label: string, field: string, defaultValue = '') => {
-        const value = checklistData[field] || defaultValue;
-        return `
-          <div class="field-text">
-            <span class="label">${label}:</span>
-            <span class="value">${value}</span>
-          </div>
-        `;
-      };
-
-      // Gerar HTML completo com TODAS as 33 seções
-      const htmlContent = `
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laudo CHECKLIST - ${fullLaudo.ordemServico}</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 11px;
-            line-height: 1.2;
-            color: #000;
-            background: white;
-            padding: 2.5px;
-        }
-        
-        .page {
-            max-width: 210mm;
-            margin: 0 auto;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 2.2px;
-            border-bottom: 0.5px solid #000;
-            padding-bottom: 0.7px;
-            position: relative;
-        }
-        
-        .company-header {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 7px;
-            margin-bottom: 1.5px;
-        }
-        
-        .header-logo {
-            max-height: 40px;
-            max-width: 120px;
-            object-fit: contain;
-        }
-        
-        .company-info {
-            font-size: 8px;
-            margin-bottom: 0.8px;
-        }
-        
-        .title {
-            font-size: 10px;
-            font-weight: bold;
-            margin: 0.8px 0;
-        }
-        
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.7px;
-            margin-bottom: 2.2px;
-        }
-        
-        .info-box {
-            border: 0.3px solid #000;
-            padding: 0.8px;
-            font-size: 8px;
-        }
-        
-        .client-vehicle-section {
-            border: 0.3px solid #000;
-            margin-bottom: 2.2px;
-            padding: 1.5px;
-        }
-        
-        .section-header {
-            font-weight: bold;
-            font-size: 10px;
-            background: #f0f0f0;
-            padding: 1.6px;
-            margin-bottom: 2.4px;
-        }
-
-        /* LAYOUT DE 3 COLUNAS SUPER COMPACTO */
-        .items-container {
-            border: 0.3px solid #000;
-            padding: 0.7px;
-        }
-        
-        .items-title {
-            text-align: center;
-            font-weight: bold;
-            font-size: 9px;
-            margin-bottom: 0.8px;
-            border-bottom: 0.3px solid #000;
-            padding-bottom: 0.4px;
-        }
-        
-        .items-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 0.4px;
-            font-size: 7.5px;
-        }
-        
-        .column {
-            border: 0.2px solid #ccc;
-            padding: 0.35px;
-        }
-        
-        .field {
-            margin-bottom: 0.5px;
-            padding: 0.5px;
-            font-size: 8px;
-            line-height: 1.2;
-        }
-        
-        .field .label {
-            display: inline;
-            font-size: 8px;
-        }
-        
-        .field .checkbox {
-            display: inline;
-            width: 14px;
-            height: 14px;
-            font-size: 9px;
-            line-height: 12px;
-            margin-left: 2px;
-            vertical-align: middle;
-        }
-        
-        .field-text {
-            margin-bottom: 0.45px;
-            padding: 0.45px;
-        }
-        
-        .field-text .value {
-            font-weight: bold;
-            font-size: 9px;
-        }
-        
-        .label {
-            flex-grow: 1;
-            font-size: 8px;
-            line-height: 1.2;
-        }
-        
-        .checkbox {
-            width: 14px;
-            height: 14px;
-            border: 0.3px solid #000;
-            display: inline-block;
-            text-align: center;
-            font-size: 9px;
-            line-height: 12px;
-            margin-left: 1px;
-        }
-        
-        .ok { background: #90EE90; }
-        .nok { background: #FFB6C1; }
-        .na { background: #E6E6FA; }
-        
-        .subsection-title {
-            font-weight: bold;
-            font-size: 7px;
-            text-decoration: underline;
-            margin: 0.45px 0 0.45px 0;
-            line-height: 1.0;
-        }
-        
-        /* MEDIÇÃO DOS PNEUS - AUMENTADA SIGNIFICATIVAMENTE */
-        .measurement-section {
-          border: 1px solid #000;
-          margin: 3px 0;
-          padding: 8px;
-          font-size: 12px;
-          background: #f8f8f8;
-        }
-
-        .measurement-title {
-          text-align: center;
-          font-weight: bold;
-          font-size: 16px;
-          margin-bottom: 8px;
-          border-bottom: 2px solid #000;
-          padding-bottom: 4px;
-          color: #000;
-        }
-
-        .measurement-header {
-          display: grid;
-          grid-template-columns: 1fr 1fr 1fr;
-          gap: 4px;
-          margin-bottom: 8px;
-          font-size: 10px;
-        }
-
-        .header-field {
-          border: 1px solid #000;
-          padding: 4px;
-          text-align: center;
-          background: #e0e0e0;
-          font-weight: bold;
-        }
-
-        /* GRID PRINCIPAL - 4 COLUNAS EXPANDIDO */
-        .measurement-grid-4col {
-          display: grid;
-          grid-template-columns: 2fr 1fr 1fr 2fr;
-          gap: 2px;
-          border: 2px solid #000;
-          font-size: 10px;
-          background: white;
-          padding: 4px;
-        }
-
-        .measurement-grid-4col .label {
-          padding: 6px;
-          font-style: italic;
-          text-align: center;
-          border: 1px solid #ccc;
-          background: #f5f5f5;
-          font-size: 9px;
-          line-height: 1.2;
-          font-weight: 500;
-        }
-
-        .measurement-grid-4col .header {
-          background: #d0d0d0;
-          border: 1px solid #000;
-          padding: 6px;
-          font-weight: bold;
-          font-size: 11px;
-          text-align: center;
-        }
-
-        .measurement-grid-4col .value {
-          border: 1px solid #ccc;
-          padding: 4px;
-          min-height: 40px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 10px;
-          background: white;
-        }
-
-        /* Estilos para pneus GRANDES */
-        .pneu-value {
-          width: 35px;
-          height: 35px;
-          border-radius: 50%;
-          background-image: url('${pneuSvgBase64}');
-          background-size: cover;
-          background-position: center;
-          background-repeat: no-repeat;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 8px;
-          font-weight: bold;
-          color: #000;
-          margin: 2px;
-          position: relative;
-          border: 1px solid #333;
-        }
-
-        .pneu-value::before {
-          content: '';
-          position: absolute;
-          width: 18px;
-          height: 18px;
-          background: rgba(255, 255, 255, 0.9);
-          border-radius: 50%;
-          z-index: 1;
-        }
-
-        .pneu-value span {
-          position: relative;
-          z-index: 2;
-          font-weight: bold;
-          color: #000;
-          font-size: 8px;
-        }
-
-        .par-values {
-          display: flex;
-          gap: 4px;
-          align-items: center;
-          justify-content: center;
-          border: 1px solid #ccc;
-          padding: 4px;
-        }
-
-        .single-value {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border: 1px solid #ccc;
-          padding: 4px;
-        }
-
-        .measurement-footer {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 8px;
-          margin-top: 8px;
-          font-size: 10px;
-        }
-
-        .footer-field {
-          border: 1px solid #000;
-          padding: 6px;
-          background: #f0f0f0;
-        }
-        
-        /* SEÇÃO FINAL UNIFICADA - LAYOUT 2 COLUNAS EXPANDIDA */
-        .final-unified-section {
-            border: 2px solid #000;
-            margin: 8px 0;
-            padding: 12px;
-            min-height: 120px;
-            background: #f8f8f8;
-        }
-        
-        .final-grid-2col {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            height: 100%;
-        }
-        
-        .left-column, .right-column {
-            padding: 8px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            border: 1px solid #ccc;
-            background: white;
-            border-radius: 4px;
-        }
-        
-        .section-block {
-            flex: 1;
-            min-height: 40px;
-        }
-        
-        .section-subtitle {
-            font-weight: bold;
-            font-size: 12px;
-            margin-bottom: 6px;
-            border-bottom: 1px solid #333;
-            padding-bottom: 4px;
-            text-align: center;
-            color: #000;
-        }
-        
-        .section-content {
-            font-size: 10px;
-            line-height: 1.3;
-            color: #333;
-        }
-        
-        /* SISTEMA DE MARCA D'ÁGUA IGUAL AO LIT - 3 LOGOS */
-        .logo-watermark-main {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            opacity: 0.08;
-            z-index: -1;
-            pointer-events: none;
-            width: 500px;
-            height: 200px;
-        }
-        
-        .logo-watermark-secondary {
-            position: fixed;
-            top: 30%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            opacity: 0.06;
-            z-index: -2;
-            pointer-events: none;
-            width: 300px;
-            height: 120px;
-        }
-        
-        .logo-watermark-tertiary {
-            position: fixed;
-            bottom: 15%;
-            right: 10%;
-            opacity: 0.05;
-            z-index: -3;
-            pointer-events: none;
-            width: 200px;
-            height: 80px;
-        }
-        
-        .logo-watermark-main img,
-        .logo-watermark-secondary img,
-        .logo-watermark-tertiary img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            filter: grayscale(100%);
-        }
-        
-        @media print {
-            body { padding: 5px; }
-            .page { margin: 0; }
-            * { break-inside: avoid; }
-            /* MARCA D'ÁGUA PARA IMPRESSÃO - PADRÃO LIT */
-            .logo-watermark-main {
-                position: fixed !important;
-                top: 50% !important;
-                left: 50% !important;
-                transform: translate(-50%, -50%) !important;
-                opacity: 0.08 !important;
-                z-index: -1 !important;
-                pointer-events: none !important;
-                width: 500px !important;
-                height: 200px !important;
-                print-color-adjust: exact;
-                -webkit-print-color-adjust: exact;
-            }
-            .logo-watermark-secondary {
-                position: fixed !important;
-                top: 30% !important;
-                left: 50% !important;
-                transform: translate(-50%, -50%) !important;
-                opacity: 0.06 !important;
-                z-index: -2 !important;
-                pointer-events: none !important;
-                width: 300px !important;
-                height: 120px !important;
-                print-color-adjust: exact;
-                -webkit-print-color-adjust: exact;
-            }
-            .logo-watermark-tertiary {
-                position: fixed !important;
-                bottom: 15% !important;
-                right: 10% !important;
-                opacity: 0.05 !important;
-                z-index: -3 !important;
-                pointer-events: none !important;
-                width: 200px !important;
-                height: 80px !important;
-                print-color-adjust: exact;
-                -webkit-print-color-adjust: exact;
-            }
-            .logo-watermark-main img,
-            .logo-watermark-secondary img,
-            .logo-watermark-tertiary img {
-                width: 100% !important;
-                height: 100% !important;
-                object-fit: contain !important;
-                filter: grayscale(100%) !important;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="page">
-        
-        <div class="header">
-            ${logoBase64 ? `
-                <div class="company-header">
-                    <img src="${logoBase64}" alt="Logo" class="header-logo">
-                    <div class="company-info">
-                        EMPRESA EXEMPLO INSPEÇÕES LTDA - Rua Exemplo 100 - Cidade Exemplo /RS - Fone: (11) 90000-0000
-                    </div>
-                </div>
-            ` : `
-                <div class="company-info" style="text-align: center; margin-bottom: 2px;">
-                    EMPRESA EXEMPLO INSPEÇÕES LTDA - Rua Exemplo 100 - Cidade Exemplo /RS - Fone: (11) 90000-0000
-                </div>
-            `}
-            <div class="title">Laudo CHECKLIST - Relatório de Preventiva</div>
-            <div style="font-size: 6px;">DATA: ${format(new Date(fullLaudo.dataEmissao), 'dd/MM/yyyy')}</div>
-            ${checklistData.validade ? `<div style="font-size: 6px;">VALIDADE: ${format(new Date(checklistData.validade), 'dd/MM/yyyy')}</div>` : ''}
-        </div>
-
-        <div class="info-grid">
-            <div class="info-box">
-                <strong>Cód. Temporal:</strong> ${fullLaudo.codTemporal || ''}
-            </div>
-            <div class="info-box">
-                <strong>Ordem de Serviço N°:</strong> ${fullLaudo.ordemServico}
-            </div>
-            ${checklistData.validade ? `<div class="info-box">
-                <strong>Validade:</strong> ${format(new Date(checklistData.validade), 'dd/MM/yyyy')}
-            </div>` : ''}
-        </div>
-
-        <div class="client-vehicle-section">
-            <div class="section-header">1 - CLIENTE</div>
-            <div style="font-size: 6px;">
-                <strong>${fullLaudo.client.name || ''}</strong><br>
-                <strong>CNPJ/CPF:</strong> ${fullLaudo.client.cnpj || ''}<br>
-                <strong>Endereço:</strong> ${fullLaudo.client.addressStreet || ''}, ${fullLaudo.client.addressNumber || ''}
-            </div>
-        </div>
-
-        <div class="client-vehicle-section">
-            <div class="section-header">2 - VEÍCULO</div>
-            <div style="font-size: 6px;">
-                <strong>Marca/Modelo:</strong> ${fullLaudo.vehicle.marcaModelo || ''} |
-                <strong>Chassi:</strong> ${fullLaudo.vehicle.numeroChassi || ''} |
-                <strong>Placa:</strong> ${fullLaudo.vehicle.placa || ''} |
-                <strong>Ano:</strong> ${fullLaudo.vehicle.anoFabricacaoModelo || ''}
-            </div>
-        </div>
-
-        <div class="items-container">
-            <div class="items-title">ITENS INSPECIONADOS</div>
-            
-            <div class="items-grid">
-                <!-- COLUNA 1: Estrutura Física -->
-                <div class="column">
-                    <div class="subsection-title">Cabina</div>
-                    ${renderField('Estado Geral', 'cabina_estadoGeral')}
-                    ${renderField('Estado Degraus de Acesso', 'cabina_estadoDegraus')}
-                    ${renderField('Portas', 'cabina_portas')}
-                    ${renderField('Integridade e Funcionamento', 'cabina_integridadeFuncionamento')}
-                    
-                    <div class="subsection-title">Bancos</div>
-                    ${renderField('Estado Geral', 'cabina_bancosEstadoGeral')}
-                    ${renderField('Fixação', 'cabina_bancosFixacao')}
-                    
-                    <div class="subsection-title">Equipamentos de Segurança</div>
-                    ${renderField('Cinto de Segurança', 'seguranca_cintoSeguranca')}
-                    ${renderField('Extintor de Incêndio da Cabine', 'seguranca_extintorCabine')}
-                    ${renderField('Extintor de Incêndio do Tanque', 'seguranca_extintorTanque')}
-                    ${renderField('Triângulo', 'seguranca_triangulo')}
-                    ${renderField('Integridade dos Espelhos Retrov.', 'seguranca_espelhosRetrovisores')}
-                    
-                    <div class="subsection-title">Pedais de Embreagem e Freio</div>
-                    ${renderField('Operacionalidade', 'pedais_embragemFreio')}
-                    ${renderField('Superfície de Pisomante', 'pedais_superficiePisomante')}
-                    ${renderField('Trincas', 'pedais_trincas')}
-                    
-                    <div class="subsection-title">Para-Brisa</div>
-                    ${renderField('Integridade, Visibilidade', 'paraBrisa_integridadeVisibilidade')}
-                    ${renderField('Trincas', 'paraBrisa_trincas')}
-                    
-                    <div class="subsection-title">Para-Sol</div>
-                    ${renderField('Integridade, Fixação, Estado', 'paraSol_integridadeFixacao')}
-                    
-                    <div class="subsection-title">Reservatório de Combustível</div>
-                    ${renderField('Integridade, Fixação, Tubulação', 'reservatorio_integridadeFixacao')}
-                    ${renderField('Vazamento', 'reservatorio_vazamento')}
-                    ${renderField('Material', 'reservatorio_material')}
-                    ${renderField('Reservatório de Comb. Suplementar', 'reservatorio_suplementar')}
-                </div>
-
-                <!-- COLUNA 2: Sistemas Mecânicos -->
-                <div class="column">
-                    <div class="subsection-title">Conjunto Motor/Caixa de Mudanças</div>
-                    ${renderField('Ancoragem', 'motor_ancoragem')}
-                    ${renderField('Proteção do Motor', 'motor_protecao')}
-                    ${renderField('Sistema de Direção', 'motor_sistemaOperacao')}
-                    ${renderField('Funcionamento, Folgas, Soldas', 'motor_funcionamentoFolgas')}
-                    ${renderField('Óleo Hidraul., Vazamentos, Tubulação', 'motor_oleoHidraulico')}
-                    ${renderField('Alinhamento de Direção', 'motor_alinhamentoDirecao')}
-                    ${renderField('Transmissão', 'motor_transmissao')}
-                    ${renderField('Eixo Cardã, Integridade, Cinta', 'motor_eixoCarda')}
-                    ${renderField('Cruzetas e Mancais', 'motor_cruzetasMancais')}
-                    
-                    <div class="subsection-title">Sistema de Escapamento</div>
-                    ${renderField('Integridade', 'motor_sistemaEscapamento')}
-                    ${renderField('Silenciosos (Produtos da Classe 3)', 'motor_integridade')}
-                    
-                    <div class="subsection-title">Chassi</div>
-                    ${renderField('Estacionamento, Freios, Reparo', 'motor_estacionamento')}
-                    ${renderField('Proteção Pino do Arlinhão, do Chassi', 'motor_protecaoPino')}
-                    ${renderField('Limite de Operacidade', 'motor_limiteOperacidade')}
-                    
-                    <div class="subsection-title">Sistema de Iluminação</div>
-                    ${renderField('Farol Principal', 'iluminacao_farolPrincipal')}
-                    ${renderField('Farol Penetrador', 'iluminacao_farolPenetrador')}
-                    ${renderField('Lanterna da Placa', 'iluminacao_lanternaPlaca')}
-                    ${renderField('Sistema de Sinalização', 'iluminacao_sinalizacao')}
-                    ${renderField('Lanterna de Freio', 'iluminacao_lanternaFreio')}
-                    ${renderField('Retrorefletores', 'iluminacao_retrorefletores')}
-                    ${renderField('Delimitadoras Dianteira', 'iluminacao_delimitadoraDianteira')}
-                    ${renderField('Delimitadoras Traseira', 'iluminacao_delimitadoraTraseira')}
-                    ${renderField('Direção Dianteira', 'iluminacao_direcaoDianteira')}
-                    ${renderField('Direção Traseira', 'iluminacao_direcaoTraseira')}
-                    ${renderField('Intermitente Direção', 'iluminacao_intermitenteDirecao')}
-                    ${renderField('Intermitente Advertência', 'iluminacao_intermitenteAdvertencia')}
-                    ${renderField('Luz Marcha-à-Ré', 'iluminacao_marchaRe')}
-                    ${renderField('Luz de Identificação', 'iluminacao_identificacao')}
-                    ${renderField('Luz de Emergência', 'iluminacao_emergencia')}
-                </div>
-
-                <!-- COLUNA 3: Eixos, Suspensão, Rodas, Pneus e Sistemas Especiais -->
-                <div class="column">
-                    <div class="subsection-title">Eixos</div>
-                    ${renderField('Trincas ou Soldas Observáveis', 'eixos_trincasSoldas')}
-                    ${renderField('Integridade do Eixo Direcional', 'eixos_integridadeDirecional')}
-                    ${renderField('Mecanismo de Elevação do Eixo', 'eixos_mecanismoElevacao')}
-                    ${renderField('Integridade e Operacionalidade', 'eixos_integridadeOperacionalidade')}
-                    
-                    <div class="subsection-title">Suspensão</div>
-                    ${renderField('Amortecedor', 'suspensao_amortecedor')}
-                    ${renderField('Balancins', 'suspensao_balancins')}
-                    ${renderField('Barra Estabilizadora', 'suspensao_barraEstabilizadora')}
-                    ${renderField('Feixes de Molas', 'suspensao_feixesMolas')}
-                    ${renderField('Braço Tensor', 'suspensao_bracoTensor')}
-                    
-                    <div class="subsection-title">Suspensão Pneumática</div>
-                    ${renderField('Integridade e Vazamentos', 'suspensao_pneumaticaMangueiras')}
-                    
-                    <div class="subsection-title">Rodas</div>
-                    ${renderField('Elementos de Fixação', 'rodas_elementosFixacao')}
-                    ${renderField('Integridade dos Aros e Rodas', 'rodas_integridadeAros')}
-                    ${renderField('Existência e Estado de Elementos', 'rodas_existenciaEstado')}
-                    ${renderField('Integridade dos Anéis de Fixação', 'rodas_integridadeAneis')}
-                    ${renderField('Estado dos Rolos, Substâncias', 'rodas_estadoRolos')}
-                    
-                    <div class="subsection-title">Pneus</div>
-                    ${renderField('Pneu Dianteiro (Recondição)', 'pneus_dianteiro')}
-                    ${renderTextField('Sulcos (Profund.m.m.)', 'pneus_sulcosProfundidade', '12.2')}
-                    ${renderField('Paridade de Pneus no Mesmo Eixo', 'pneus_paridadeMesmoEixo')}
-                    ${renderField('Flancos (Raspos ou Cortes)', 'pneus_flancos')}
-                    ${renderField('Banda Rodagem (Raspos, Cortes)', 'pneus_bandaRodagem')}
-                    ${renderTextField('Pneu Sobresalente m.m.', 'pneus_sobresalente', '5.8')}
-                    
-                    <div class="subsection-title">Sistema de Freio</div>
-                    ${renderField('Freio Estacionamento', 'freio_estacionamento')}
-                    ${renderField('Freio de Serviço', 'freio_servico')}
-                    ${renderField('Estado Compressor', 'freio_estadoCompressor')}
-                    ${renderField('Correias Compressor', 'freio_correiasCompressor')}
-                    ${renderField('Fixação/Conexões', 'freio_fixacaoConexoes')}
-                    ${renderField('Vazamentos', 'freio_vazamentos')}
-                    ${renderField('Lonas de Freio', 'freio_lonasFreio')}
-                    ${renderField('Condição das Lonas', 'freio_condicaoLonas')}
-                    ${renderField('Fixação da Lona', 'freio_fixacaoLona')}
-                    ${renderField('Espessura das Lonas', 'freio_espessuraLonas')}
-                    ${renderField('Indicador Pressão', 'freio_indicadorPressao')}
-                    <div class="subsection-title">Reservatório de Ar</div>
-                    ${renderField('Integridade', 'reservatorioAr_integridade')}
-                    ${renderField('Fixação', 'reservatorioAr_fixacao')}
-                    ${renderField('Vazamentos', 'reservatorioAr_vazamentos')}
-                    ${renderField('Válvulas', 'reservatorioAr_valvulas')}
-                    ${renderTextField('Pressão Op.', 'reservatorioAr_pressaoOperacional')}
-                    ${renderField('Sistema de Dreno', 'reservatorioAr_dreno')}
-                </div>
-            </div>
-        </div>
-
-        <!-- NOVA SEÇÃO: COMPRESSOR DE AR -->
-        <div style="margin: 0.5px 0; font-size: 6px; border: 0.3px solid #000; padding: 1px;">
-            <div class="subsection-title" style="text-align: center; font-weight: bold; margin-bottom: 1px;">Compressor de ar</div>
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5px;">
-                ${renderTextField('Tempo Recuperação Compressor (seg)', 'compressor_tempoRecuperacao', '29 S')}
-                ${renderTextField('Pressão Inicial (Bar)', 'compressor_pressaoInicial', '9')}
-                ${renderTextField('Pressão Final (Bar)', 'compressor_pressaoFinal', '8')}
-                ${renderTextField('Perda ar %', 'compressor_perdaAr', '11.1%')}
-            </div>
-        </div>
-
-        <!-- SISTEMAS ELÉTRICOS E ESPECIAIS ULTRA COMPACTOS -->
-        <div style="margin: 0.5px 0; font-size: 4.5px;">
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5px;">
-                ${renderField('Cronotacógrafo', 'cronografo_funcionamento')}
-                ${renderField('Buzina', 'buzina_existenciaFuncionamento')}
-                ${renderField('Limpador Para-Brisa', 'limpador_operacionalidade')}
-                ${renderField('Integridade Limpador', 'limpador_integridadeOperacionalidade')}
-            </div>
-        </div>
-
-        <!-- SEÇÕES ESPECIAIS EM GRADE ULTRA COMPACTA -->
-        <div style="margin: 0.5px 0; font-size: 4.5px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5px;">
-            ${renderField('Sistema Alarme Ré', 'alarmeRe_funcionamento')}
-            ${renderField('Para-Choque Traseiro', 'paraChoque_integridade')}
-            ${renderField('Para-Lama', 'paraLama_integridade')}
-            ${renderField('Dispositivos Refletivos', 'refletivos_integridade')}
-            ${renderField('Chassi Porta-Contêiner', 'chassiContainer_atendimentoRes725')}
-            ${renderField('Dolly', 'dolly_estadoCambio')}
-            ${renderField('Pinos Semi-Reboque', 'pinosSemi_integridade')}
-            ${renderField('Quinta-Roda', 'quintaRoda_integridade')}
-            ${renderField('Pino-Rei', 'pinoRei_fixacaoVertical')}
-            ${renderField('Conjunto de Engate', 'engate_estadoRotula')}
-        </div>
-
-        <!-- CAMPOS DE TEXTO ADICIONAIS -->
-        <div style="margin: 0.5px 0; font-size: 4.5px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5px;">
-            ${renderTextField('Largura Elétrico', 'eletricos_largura')}
-            ${renderTextField('Diâmetro Pino-Rei (mm)', 'pinoRei_diametroMm')}
-        </div>
-
-        <!-- MEDIÇÃO DOS PNEUS - ESQUEMA COMPACTO -->
-        <div class="measurement-section">
-          <div class="measurement-title">Medição dos Pneus</div>
-          
-          <!-- Campos superiores compactados -->
-          <div class="measurement-header">
-            <div>Tipo: ${checklistData.medicao_tipoPneu || '(T) Traseiro | (L) Lado'}</div>
-            <div>Modelo: ${checklistData.medicao_modelo || '275/80 R 22.5'}</div>
-            <div>Tipo: ${checklistData.medicao_tipo || 'LISO'}</div>
-          </div>
-          
-          <!-- Grid 4 colunas EXATO -->
-          <div class="measurement-grid-4col">
-            <!-- Cabeçalhos -->
-            <div></div>
-            <div class="header">lado esquerdo</div>
-            <div class="header">lado direito</div>
-            <div></div>
-            
-            <!-- LINHA 1 - Visual de pneu -->
-            <div class="label">eixo 1 esquerdo dianteiro do caminhão</div>
-            <div class="single-value">
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha1_esquerdo)}</span>
-              </div>
-            </div>
-            <div class="single-value">
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha1_direito)}</span>
-              </div>
-            </div>
-            <div class="label">eixo 1 direito dianteiro do caminhão</div>
-            
-            <!-- LINHA 2 - Visual de pneu -->
-            <div class="label">eixo 2 esquerdo dianteiro do caminhão</div>
-            <div class="single-value">
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha2_esquerdo, 'X')}</span>
-              </div>
-            </div>
-            <div class="single-value">
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha2_direito, 'X')}</span>
-              </div>
-            </div>
-            <div class="label">eixo 2 direito dianteiro do caminhão</div>
-            
-            <!-- LINHA 3 - PARES com visual de pneu -->
-            <div class="label">eixo 1 traseiro do caminhão lado esquerdo</div>
-            <div class="par-values">
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha3_esquerdo1)}</span>
-              </div>
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha3_esquerdo2)}</span>
-              </div>
-            </div>
-            <div class="par-values">
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha3_direito1)}</span>
-              </div>
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha3_direito2)}</span>
-              </div>
-            </div>
-            <div class="label">eixo 1 traseiro do caminhão lado direito</div>
-            
-            <!-- LINHA 4 - PARES com visual de pneu -->
-            <div class="label">eixo 2 traseiro do caminhão lado esquerdo</div>
-            <div class="par-values">
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha4_esquerdo1)}</span>
-              </div>
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha4_esquerdo2)}</span>
-              </div>
-            </div>
-            <div class="par-values">
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha4_direito1)}</span>
-              </div>
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha4_direito2)}</span>
-              </div>
-            </div>
-            <div class="label">eixo 2 traseiro do caminhão lado direito</div>
-            
-            <!-- LINHA 5 - PARES com visual de pneu -->
-            <div class="label">eixo 3 traseiro do caminhão lado esquerdo</div>
-            <div class="par-values">
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha5_esquerdo1)}</span>
-              </div>
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha5_esquerdo2)}</span>
-              </div>
-            </div>
-            <div class="par-values">
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha5_direito1)}</span>
-              </div>
-              <div class="pneu-value">
-                <span>${mapMedicaoValue(checklistData.medicao_linha5_direito2)}</span>
-              </div>
-            </div>
-            <div class="label">eixo 3 traseiro do caminhão lado direito</div>
-          </div>
-          
-          <!-- Campos inferiores -->
-          <div class="measurement-footer">
-            <div>Estado Geral: ${checklistData.medicao_estadoGeral || 'Bom | Regular | Ruim'}</div>
-            <div>Observações: ${checklistData.medicao_observacoes || ''}</div>
-          </div>
-        </div>
-
-        <!-- SEÇÃO FINAL UNIFICADA - 2 COLUNAS -->
-        <div class="final-unified-section">
-            <div class="final-grid-2col">
-                <div class="left-column">
-                    <div class="section-block">
-                        <div class="section-subtitle">Observações</div>
-                        <div class="section-content">
-                            ${observacoes.split('--- DADOS CHECKLIST ---')[0] || observacoes || 'Nenhuma observação específica.'}
-                        </div>
-                    </div>
-                    <div class="section-block">
-                        <div class="section-subtitle">Normas Aplicáveis</div>
-                        <div class="section-content">
-                            Portaria nº457/08, POP-OP001/0418
-                        </div>
-                    </div>
-                </div>
-                <div class="right-column">
-                    <div class="section-block">
-                        <div class="section-subtitle">RESULTADO INSPEÇÃO</div>
-                        <div class="section-content">
-                            <strong>Marcação:</strong> ✓ Aprovado | R Reprovado | ✗ Não Aplicável<br>
-                            <strong>APROVADO APÓS REINSPEÇÃO EM:</strong> _______________
-                        </div>
-                    </div>
-                    <div class="section-block">
-                        <div class="section-subtitle">Inspetor Emissor</div>
-                        <div class="section-content">
-                            _________________________________<br>
-                            Nome: ______________________________<br>
-                            Assinatura: _________________________
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div style="text-align: center; font-size: 4px; margin-top: 2px;">
-            Documento gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')} - Sistema GTS
-        </div>
-    </div>
-</body>
-</html>`;
-
-      // Criar e baixar o arquivo HTML
-      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
+      // Baixar o HTML retornado pela API
+      const htmlBlob = await response.blob();
+      const url = URL.createObjectURL(htmlBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `laudo-checklist-${fullLaudo.ordemServico}.html`;
+      link.download = `laudo-checklist-${laudoId}.html`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
+      console.log('âœ… [CHECKLIST-HTML] HTML baixado com sucesso');
       setMessage('HTML completo gerado com sucesso!');
 
     } catch (e) {
@@ -1310,6 +405,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       setMessage('Erro: Não foi possível gerar o HTML.');
     }
   };
+
 
   const generateChecklistPdf = async (laudoId: string) => {
     try {
@@ -1326,11 +422,11 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       const fullLaudo: Laudo & { client: Client; vehicle: Vehicle } = await laudoDetailsRes.json();
       const adminSettings: AdminSetting = await adminSettingsRes.json();
       const fontBytes = await fontBytesRes.arrayBuffer();
-      
+
       // Parse dos dados do checklist das observações
       const observacoes = fullLaudo.observacoes || '';
       let checklistData: any = {};
-      
+
       try {
         const checklistStart = observacoes.indexOf('--- DADOS CHECKLIST ---');
         if (checklistStart !== -1) {
@@ -1387,11 +483,11 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       const drawCheckbox = (x: number, y: number, value: string, size: number = 8) => {
         const boxSize = 8;
         drawRect(x, y, boxSize, boxSize, false, 0.9, 0.5);
-        
+
         if (value === 'OK') {
-          drawText('✓', x + 1, y + 1, 6);
+          drawText('âœ“', x + 1, y + 1, 6);
         } else if (value === 'NOK') {
-          drawText('✗', x + 1, y + 1, 6);
+          drawText('âœ—', x + 1, y + 1, 6);
         } else if (value === 'NA') {
           drawText('N', x + 0.5, y + 1, 5);
         }
@@ -1402,7 +498,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
         try {
           let logoImage;
           const logoUrl = adminSettings.companyLogoUrl?.toLowerCase() || '';
-          
+
           if (logoUrl.includes('.png')) {
             logoImage = await pdfDoc.embedPng(logoImageData);
           } else if (logoUrl.includes('.jpg') || logoUrl.includes('.jpeg')) {
@@ -1410,7 +506,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
           } else {
             logoImage = await pdfDoc.embedPng(logoImageData);
           }
-          
+
           // Logo pequeno no cabeçalho
           page.drawImage(logoImage, {
             x: 40,
@@ -1436,7 +532,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
             height: 50,
             opacity: 0.06 // Ainda mais transparente
           });
-          
+
         } catch (e) {
           console.error('Erro ao incorporar logo da empresa:', e);
         }
@@ -1446,7 +542,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       drawText('EMPRESA EXEMPLO INSPEÇÕES LTDA - Rua Exemplo 100 - Cidade Exemplo /RS - Fone: (11) 90000-0000', 110, height - 30, 7);
       drawText('Laudo CHECKLIST - Relatório de Preventiva', 220, height - 45, 12);
       drawText(`DATA: ${format(new Date(fullLaudo.dataEmissao), 'dd/MM/yyyy')}`, 480, height - 30, 8);
-      
+
       // Adicionar VALIDADE se disponível
       if (checklistData.validade) {
         drawText(`VALIDADE: ${format(new Date(checklistData.validade), 'dd/MM/yyyy')}`, 480, height - 45, 8);
@@ -1455,13 +551,13 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       // Código, Ordem de Serviço e Validade (ajustando layout)
       const boxWidth = checklistData.validade ? 173 : 180;
       const boxCount = checklistData.validade ? 3 : 2;
-      
+
       drawRect(40, height - 70, boxWidth, 15);
       drawText(`Cód. Temporal: ${fullLaudo.codTemporal || ''}`, 42, height - 62, 8);
 
       drawRect(40 + boxWidth + 5, height - 70, boxWidth, 15);
       drawText(`Ordem de Serviço N°: ${fullLaudo.ordemServico}`, 42 + boxWidth + 7, height - 62, 8);
-      
+
       if (checklistData.validade) {
         drawRect(40 + (boxWidth + 5) * 2, height - 70, boxWidth, 15);
         drawText(`Validade: ${format(new Date(checklistData.validade), 'dd/MM/yyyy')}`, 42 + (boxWidth + 5) * 2 + 2, height - 62, 8);
@@ -1472,18 +568,18 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       // Seção 1 - CLIENTE
       drawRect(40, currentY - 40, 520, 40, false, 0.85);
       drawText('1 - CLIENTE', 42, currentY - 12, 9);
-      
+
       // Dados do cliente
       drawText(`${fullLaudo.client.name || ''}`, 42, currentY - 25, 8);
       drawText(`CNPJ/CPF: ${fullLaudo.client.cnpj || ''}`, 350, currentY - 25, 8);
       drawText(`${fullLaudo.client.addressStreet || ''}, ${fullLaudo.client.addressNumber || ''}`, 42, currentY - 37, 8);
-      
+
       currentY -= 50;
 
       // Seção 2 - VEÍCULO
       drawRect(40, currentY - 40, 520, 40, false, 0.85);
       drawText('2 - VEÍCULO', 42, currentY - 12, 9);
-      
+
       // Dados do veículo
       drawText(`${fullLaudo.vehicle.marcaModelo || ''}`, 42, currentY - 25, 8);
       drawText(`${fullLaudo.vehicle.numeroChassi || ''}`, 200, currentY - 25, 8);
@@ -1499,7 +595,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       // Seção 3 - ITENS INSPECIONADOS (Principal)
       drawRect(40, currentY - 380, 520, 15, false, 0.7);
       drawText('ITENS INSPECIONADOS', 250, currentY - 10, 10);
-      
+
       currentY -= 25;
 
       // Definir colunas com alinhamento perfeito dos checkboxes
@@ -1510,7 +606,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
 
       // COLUNA 1 - Cabina e Equipamentos
       let col1Y = currentY;
-      
+
       // Cabina
       drawText('Cabina', col1X, col1Y, 7);
       col1Y -= 12;
@@ -1526,7 +622,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       drawText('Integridade e Funcionamento', col1X, col1Y, 6);
       drawCheckbox(col1X + checkboxOffset, col1Y - 2, checklistData.cabina_integridadeFuncionamento || '');
       col1Y -= 12;
-      
+
       // Bancos
       drawText('Bancos', col1X, col1Y, 7);
       col1Y -= 12;
@@ -1590,7 +686,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
 
       // COLUNA 2 - Motor e Sistemas
       let col2Y = currentY;
-      
+
       // Conjunto Motor/Caixa de Mudanças
       drawText('Conjunto Motor/Caixa de Mudanças', col2X, col2Y, 7);
       col2Y -= 12;
@@ -1646,7 +742,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
 
       // COLUNA 3 - Eixos, Suspensão, Rodas
       let col3Y = currentY;
-      
+
       // Eixos
       drawText('Eixos', col3X, col3Y, 7);
       col3Y -= 12;
@@ -1732,7 +828,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       currentY = Math.min(col1Y, col2Y, col3Y) - 25;
 
       // ===== TODAS AS NOVAS SEÇÕES DO PDF =====
-      
+
       // SEÇÃO: Pedais Expandido (adicionar Trincas)
       currentY -= 15;
       drawText('Pedais - Trincas', col1X, currentY, 6);
@@ -1744,7 +840,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       drawRect(40, currentY - ilumHeight, 520, ilumHeight, false, 0.9, 1);
       drawText('Sistema de Iluminação COMPLETO', 200, currentY - 10, 8);
       currentY -= 25;
-      
+
       // Iluminação em 3 colunas para acomodar todos os campos
       let ilumCol1Y = currentY;
       // Coluna 1 - Faróis e Lanternas Básicas
@@ -1765,7 +861,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       ilumCol1Y -= 9;
       drawText('Retrorefletores', col1X, ilumCol1Y, 6);
       drawCheckbox(col1X + 120, ilumCol1Y - 2, checklistData.iluminacao_retrorefletores || '');
-      
+
       let ilumCol2Y = currentY;
       // Coluna 2 - Lanternas Delimitadoras e Direção
       drawText('Delimitadoras Dianteira', col2X, ilumCol2Y, 6);
@@ -1785,7 +881,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       ilumCol2Y -= 9;
       drawText('Intermitente Advertência', col2X, ilumCol2Y, 6);
       drawCheckbox(col2X + 120, ilumCol2Y - 2, checklistData.iluminacao_intermitenteAdvertencia || '');
-      
+
       let ilumCol3Y = currentY;
       // Coluna 3 - Luzes Especiais
       drawText('Luz Marcha-à-Ré', col3X, ilumCol3Y, 6);
@@ -1796,7 +892,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       ilumCol3Y -= 9;
       drawText('Luz de Emergência', col3X, ilumCol3Y, 6);
       drawCheckbox(col3X + 120, ilumCol3Y - 2, checklistData.iluminacao_emergencia || '');
-      
+
       currentY = Math.min(ilumCol1Y, ilumCol2Y, ilumCol3Y) - 20;
 
       // SEÇÃO: Sistema de Comunicação e Elétricos
@@ -1804,7 +900,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       drawRect(40, currentY - eletricosHeight, 520, eletricosHeight, false, 0.9, 1);
       drawText('Sistema de Comunicação e Elétricos', 200, currentY - 10, 8);
       currentY -= 25;
-      
+
       let eletCol1Y = currentY;
       drawText('Retrorefletores', col1X, eletCol1Y, 6);
       drawCheckbox(col1X + 120, eletCol1Y - 2, checklistData.comunicacao_retrorefletores || '');
@@ -1817,7 +913,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       eletCol1Y -= 9;
       drawText('Fiação: Fixação', col1X, eletCol1Y, 6);
       drawCheckbox(col1X + 120, eletCol1Y - 2, checklistData.eletricos_fiacaoFixacao || '');
-      
+
       let eletCol2Y = currentY;
       drawText('Largura: ' + (checklistData.eletricos_largura || 'N/A'), col2X, eletCol2Y, 6);
       eletCol2Y -= 9;
@@ -1829,7 +925,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       eletCol2Y -= 9;
       drawText('Estado da Fiação', col2X, eletCol2Y, 6);
       drawCheckbox(col2X + 120, eletCol2Y - 2, checklistData.eletricos_estadoFiacao || '');
-      
+
       currentY = Math.min(eletCol1Y, eletCol2Y) - 20;
 
       // SEÇÃO: Sistema de Alarme de Ré
@@ -1952,7 +1048,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       drawRect(40, currentY - freioHeight, 520, freioHeight, false, 0.9, 1);
       drawText('Sistema de Freio EXPANDIDO', 200, currentY - 10, 8);
       currentY -= 25;
-      
+
       let freioCol1Y = currentY;
       drawText('Freio Estacionamento', col1X, freioCol1Y, 6);
       drawCheckbox(col1X + 130, freioCol1Y - 2, checklistData.freio_estacionamento || '');
@@ -1971,7 +1067,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       freioCol1Y -= 9;
       drawText('Vazamentos', col1X, freioCol1Y, 6);
       drawCheckbox(col1X + 130, freioCol1Y - 2, checklistData.freio_vazamentos || '');
-      
+
       let freioCol2Y = currentY;
       drawText('Lonas de Freio', col2X, freioCol2Y, 6);
       drawCheckbox(col2X + 130, freioCol2Y - 2, checklistData.freio_lonasFreio || '');
@@ -1987,7 +1083,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       freioCol2Y -= 9;
       drawText('Indicador Pressão', col2X, freioCol2Y, 6);
       drawCheckbox(col2X + 130, freioCol2Y - 2, checklistData.freio_indicadorPressao || '');
-      
+
       currentY = Math.min(freioCol1Y, freioCol2Y) - 20;
 
       // SEÇÃO: Reservatório de Ar - TOTALMENTE NOVA
@@ -1995,7 +1091,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       drawRect(40, currentY - reservatorioHeight, 520, reservatorioHeight, false, 0.85, 1);
       drawText('RESERVATÓRIO DE AR', 220, currentY - 10, 8);
       currentY -= 25;
-      
+
       let resCol1Y = currentY;
       drawText('Integridade', col1X, resCol1Y, 6);
       drawCheckbox(col1X + 80, resCol1Y - 2, checklistData.reservatorioAr_integridade || '');
@@ -2005,7 +1101,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       resCol1Y -= 9;
       drawText('Vazamentos', col1X, resCol1Y, 6);
       drawCheckbox(col1X + 80, resCol1Y - 2, checklistData.reservatorioAr_vazamentos || '');
-      
+
       let resCol2Y = currentY;
       drawText('Válvulas', col2X, resCol2Y, 6);
       drawCheckbox(col2X + 80, resCol2Y - 2, checklistData.reservatorioAr_valvulas || '');
@@ -2014,7 +1110,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       resCol2Y -= 9;
       drawText('Sistema de Dreno', col2X, resCol2Y, 6);
       drawCheckbox(col2X + 120, resCol2Y - 2, checklistData.reservatorioAr_dreno || '');
-      
+
       currentY = Math.min(resCol1Y, resCol2Y) - 25;
 
       // Sistemas Elétricos Básicos (mantidos)
@@ -2025,7 +1121,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       drawText('Limpador Para-Brisa', 295, currentY, 6);
       drawCheckbox(435, currentY - 2, checklistData.limpador_operacionalidade || '');
       currentY -= 15;
-      
+
       drawText('Integridade Limpador', 42, currentY, 6);
       drawCheckbox(165, currentY - 2, checklistData.limpador_integridadeOperacionalidade || '');
       currentY -= 20;
@@ -2035,11 +1131,11 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       drawRect(40, currentY - medicaoHeight, 520, medicaoHeight, false, 0.85, 2);
       drawText('MEDIÇÃO DOS PNEUS', 250, currentY - 15, 14);
       currentY -= 35;
-      
+
       // Cabeçalho da medição com fontes maiores
       drawText(`Tipo: ${checklistData.medicao_tipoPneu || '(T) Traseiro | (L) Lado'} | Modelo: ${checklistData.medicao_modelo || '275/80 R 22.5'} | Tipo: ${checklistData.medicao_tipo || 'LISO'}`, 42, currentY, 9);
       currentY -= 25;
-      
+
       // Layout de 4 colunas expandido
       const medicaoCol1X = 42;
       const medicaoCol2X = 180;
@@ -2047,34 +1143,34 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       const medicaoCol4X = 460;
       const medicaoBoxWidth = 80;
       const medicaoBoxHeight = 18;
-      
+
       // Cabeçalhos maiores
       drawText('POSIÇÃO', medicaoCol1X + 20, currentY, 9);
       drawText('LADO ESQUERDO', medicaoCol2X, currentY, 9);
       drawText('LADO DIREITO', medicaoCol3X, currentY, 9);
       drawText('POSIÇÃO', medicaoCol4X, currentY, 9);
       currentY -= 25;
-      
+
       // Função para desenhar caixa expandida
       const drawExpandedBox = (x: number, y: number, value: string) => {
         drawRect(x, y, medicaoBoxWidth, medicaoBoxHeight, false, 0.9, 1);
         drawText(value || '', x + 6, y + 8, 10);
       };
-      
+
       // LINHA 1 - Eixo 1 dianteiro
       drawText('EIXO 1 DIANTEIRO', medicaoCol1X - 20, currentY + 8, 8);
       drawExpandedBox(medicaoCol2X, currentY, checklistData.medicao_linha1_esquerdo || '');
       drawExpandedBox(medicaoCol3X, currentY, checklistData.medicao_linha1_direito || '');
       drawText('EIXO 1 DIANTEIRO', medicaoCol4X - 20, currentY + 8, 8);
       currentY -= 25;
-      
+
       // LINHA 2 - Eixo 2 dianteiro
       drawText('EIXO 2 DIANTEIRO', medicaoCol1X - 20, currentY + 8, 8);
       drawExpandedBox(medicaoCol2X, currentY, checklistData.medicao_linha2_esquerdo || 'X');
       drawExpandedBox(medicaoCol3X, currentY, checklistData.medicao_linha2_direito || 'X');
       drawText('EIXO 2 DIANTEIRO', medicaoCol4X - 20, currentY + 8, 8);
       currentY -= 25;
-      
+
       // LINHA 3 - Eixo 1 traseiro (pares)
       drawText('EIXO 1 TRASEIRO', medicaoCol1X - 20, currentY + 8, 8);
       drawExpandedBox(medicaoCol2X - 20, currentY, checklistData.medicao_linha3_esquerdo1 || '');
@@ -2083,7 +1179,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       drawExpandedBox(medicaoCol3X + 20, currentY, checklistData.medicao_linha3_direito2 || '');
       drawText('EIXO 1 TRASEIRO', medicaoCol4X - 20, currentY + 8, 8);
       currentY -= 25;
-      
+
       // LINHA 4 - Eixo 2 traseiro (pares)
       drawText('EIXO 2 TRASEIRO', medicaoCol1X - 20, currentY + 8, 8);
       drawExpandedBox(medicaoCol2X - 20, currentY, checklistData.medicao_linha4_esquerdo1 || '');
@@ -2092,7 +1188,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       drawExpandedBox(medicaoCol3X + 20, currentY, checklistData.medicao_linha4_direito2 || '');
       drawText('EIXO 2 TRASEIRO', medicaoCol4X - 20, currentY + 8, 8);
       currentY -= 25;
-      
+
       // LINHA 5 - Eixo 3 traseiro (pares)
       drawText('EIXO 3 TRASEIRO', medicaoCol1X - 20, currentY + 8, 8);
       drawExpandedBox(medicaoCol2X - 20, currentY, checklistData.medicao_linha5_esquerdo1 || '');
@@ -2101,11 +1197,11 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       drawExpandedBox(medicaoCol3X + 20, currentY, checklistData.medicao_linha5_direito2 || '');
       drawText('EIXO 3 TRASEIRO', medicaoCol4X - 20, currentY + 8, 8);
       currentY -= 25;
-      
+
       // Campos inferiores expandidos
       drawText(`ESTADO GERAL: ${checklistData.medicao_estadoGeral || 'Bom | Regular | Ruim'}`, 42, currentY, 9);
       drawText(`OBSERVAÇÕES: ${checklistData.medicao_observacoes || ''}`, 300, currentY, 9);
-      
+
       currentY -= 40;
 
       // Seção Observações EXPANDIDA com retângulo demarcador
@@ -2117,21 +1213,21 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       const basicObs = observacoes.split('--- DADOS CHECKLIST ---')[0] || observacoes;
       const obsLines = [];
       const maxLineLength = 75;
-      
+
       // Quebra de linha inteligente
       const sentences = basicObs.split(/[.!?]+/).filter(s => s.trim());
       let currentLine = '';
-      
+
       for (const sentence of sentences) {
         const cleanSentence = sentence.trim();
         if (!cleanSentence) continue;
-        
+
         const fullSentence = cleanSentence + (cleanSentence.match(/[.!?]$/) ? '' : '.');
         const words = fullSentence.split(' ');
-        
+
         for (const word of words) {
           const testLine = currentLine ? `${currentLine} ${word}` : word;
-          
+
           if (testLine.length <= maxLineLength) {
             currentLine = testLine;
           } else {
@@ -2144,19 +1240,19 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
             }
           }
         }
-        
+
         if (currentLine && currentLine.trim().endsWith('.')) {
           obsLines.push(currentLine);
           currentLine = '';
         }
       }
-      
+
       if (currentLine) obsLines.push(currentLine);
 
       // Renderizar texto das observações expandido
       const lineHeight = 12;
       const startY = currentY - 40;
-      
+
       obsLines.slice(0, 8).forEach((line, index) => {
         const yPos = startY - (index * lineHeight);
         drawText(line.trim(), 50, yPos, 9);
@@ -2168,18 +1264,42 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       const resultadoHeight = 60;
       drawRect(40, currentY - resultadoHeight, 520, resultadoHeight, false, 0.85, 2);
       drawText('RESULTADO DA INSPEÇÃO', 250, currentY - 15, 12);
-      
+
       // Linha superior com opções
       drawText('MARCAÇÃO:', 50, currentY - 35, 9);
       drawText('✓ APROVADO', 140, currentY - 35, 9);
       drawText('R REPROVADO', 230, currentY - 35, 9);
       drawText('✗ NÃO APLICÁVEL', 330, currentY - 35, 9);
-      
+
       // Linha inferior
       drawText('APROVADO APÓS REINSPEÇÃO EM: ______________________', 50, currentY - 50, 9);
-      
+
       // Linha para assinatura
       drawText('INSPETOR: ________________________________', 280, currentY - 50, 9);
+
+      // === HASH DE AUTENTICIDADE ===
+      currentY -= 75;
+
+      // Gerar hash SHA-256 do laudo para verificação de autenticidade
+      const laudoContent = JSON.stringify({
+        id: fullLaudo.id,
+        ordemServico: fullLaudo.ordemServico,
+        codTemporal: fullLaudo.codTemporal,
+        dataEmissao: fullLaudo.dataEmissao,
+        cliente: fullLaudo.client.name,
+        veiculo: fullLaudo.vehicle.placa,
+        tipo: 'CHECKLIST'
+      });
+      const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(laudoContent));
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const documentHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+      // Desenhar seção de hash/autenticidade no rodapé
+      drawRect(40, currentY - 45, 520, 45, false, 0.95);
+      drawText('VERIFICAÇÃO DE AUTENTICIDADE', 200, currentY - 12, 9);
+      drawText(`SHA-256: ${documentHash.substring(0, 32)}...`, 50, currentY - 25, 7);
+      drawText(`Emitido em: ${format(new Date(), 'dd/MM/yyyy HH:mm')} | Laudo ${fullLaudo.ordemServico}`, 50, currentY - 38, 7);
+      drawText('Documento gerado eletronicamente pelo Sistema Easy Laudos', 300, currentY - 38, 6);
 
       const pdfBytes = await pdfDoc.save();
       download(pdfBytes, `laudo-checklist-${fullLaudo.ordemServico}.pdf`, 'application/pdf');
@@ -2192,11 +1312,11 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
 
   const generateChecklistHtmlToPdf = async (laudoId: string) => {
     try {
-      console.log('📄 [CHECKLIST-PDF] Iniciando geração de PDF para ID:', laudoId);
+      console.log('ðŸ“„ [CHECKLIST-PDF] Iniciando geração de PDF para ID:', laudoId);
       setMessage('Gerando PDF...');
 
       // Fazer chamada para API route server-side
-      console.log('🌐 [CHECKLIST-PDF] Fazendo requisição para /api/laudos/pdf');
+      console.log('ðŸŒ [CHECKLIST-PDF] Fazendo requisição para /api/laudos/pdf');
       const response = await fetch('/api/laudos/pdf', {
         method: 'POST',
         headers: {
@@ -2205,7 +1325,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
         body: JSON.stringify({ laudoId }),
       });
 
-      console.log('📡 [CHECKLIST-PDF] Resposta da API PDF:', {
+      console.log('ðŸ“¡ [CHECKLIST-PDF] Resposta da API PDF:', {
         status: response.status,
         statusText: response.statusText,
         ok: response.ok,
@@ -2214,18 +1334,18 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.log('❌ [CHECKLIST-PDF] Erro na resposta:', errorText);
+        console.log('âŒ [CHECKLIST-PDF] Erro na resposta:', errorText);
         throw new Error('Falha ao gerar PDF no servidor');
       }
 
       // Baixar o PDF retornado pela API
-      console.log('📥 [CHECKLIST-PDF] Processando blob do PDF');
+      console.log('ðŸ“¥ [CHECKLIST-PDF] Processando blob do PDF');
       const pdfBlob = await response.blob();
-      console.log('📥 [CHECKLIST-PDF] Blob gerado:', {
+      console.log('ðŸ“¥ [CHECKLIST-PDF] Blob gerado:', {
         size: pdfBlob.size,
         type: pdfBlob.type
       });
-      
+
       const url = URL.createObjectURL(pdfBlob);
       const link = document.createElement('a');
       link.href = url;
@@ -2235,20 +1355,25 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      console.log('✅ [CHECKLIST-PDF] PDF baixado com sucesso');
+      console.log('âœ… [CHECKLIST-PDF] PDF baixado com sucesso');
       setMessage('PDF gerado com sucesso!');
 
     } catch (e) {
-      console.error('💥 [CHECKLIST-PDF] Erro ao gerar PDF:', e);
+      console.error('ðŸ’¥ [CHECKLIST-PDF] Erro ao gerar PDF:', e);
       setMessage('Erro: Não foi possível gerar o PDF.');
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className={styles.checklistForm}>
+    <form onSubmit={handleSubmit} onPointerDown={handleEmptyAreaTap} className={styles.checklistForm}>
       {showShortcutFeedback && (
-        <div className={styles.shortcutFeedback}>
-          ✅ Todos os itens marcados como OK!
+         <div className={styles.shortcutFeedback}>
+           ✅ Todos os itens marcados como OK!
+         </div>
+      )}
+      {tapCount > 0 && tapCount < 5 && (
+        <div className={styles.tapProgress} aria-hidden="true">
+          {'•'.repeat(tapCount)}{'○'.repeat(5 - tapCount)}
         </div>
       )}
       {/* Seleção Cliente e Veículo */}
@@ -2257,10 +1382,10 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
         <div className={styles.grid2}>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Cliente</label>
-            <select 
-              value={selectedClient} 
-              onChange={handleClientChange} 
-              required 
+            <select
+              value={selectedClient}
+              onChange={handleClientChange}
+              required
               className={styles.select}
             >
               <option value="">-- Selecione um Cliente --</option>
@@ -2269,24 +1394,24 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
               ))}
             </select>
           </div>
-          
+
           <div className={styles.inputGroup}>
             <label className={styles.label}>Veículo</label>
-            <select 
-              value={selectedVehicle} 
-              onChange={handleVehicleChange} 
-              disabled={!selectedClient || isVehicleLoading} 
-              required 
+            <select
+              value={selectedVehicle}
+              onChange={handleVehicleChange}
+              disabled={!selectedClient || isVehicleLoading}
+              required
               className={styles.select}
             >
               {isVehicleLoading ? <option>Carregando...</option> : vehicles.length > 0 ?
                 <><option value="">-- Selecione um Veículo --</option>
-                {vehicles.map(v => <option key={v.id} value={v.id}>{v.placa} - {v.marcaModelo}</option>)}</> :
+                  {vehicles.map(v => <option key={v.id} value={v.id}>{v.placa} - {v.marcaModelo}</option>)}</> :
                 <option>-- Selecione um Cliente Primeiro --</option>}
             </select>
           </div>
         </div>
-        
+
         <div className={styles.grid4}>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Ordem de Serviço</label>
@@ -2298,7 +1423,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
               className={styles.input}
             />
           </div>
-          
+
           <div className={styles.inputGroup}>
             <label className={styles.label}>Data de Emissão</label>
             <input
@@ -2309,7 +1434,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
               className={styles.input}
             />
           </div>
-          
+
           <div className={styles.inputGroup}>
             <label className={styles.label}>Validade</label>
             <input
@@ -2319,15 +1444,16 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
               className={styles.input}
             />
           </div>
-          
+
           <div className={styles.inputGroup}>
-            <label className={styles.label}>Código Temporal</label>
+            <label className={styles.label}>Código Temporal ðŸŽ²</label>
             <input
               type="text"
               value={checklistData.codTemporal || ''}
               onChange={(e) => handleInputChange('codTemporal', e.target.value)}
-              readOnly
               className={styles.input}
+              placeholder="Código gerado automaticamente"
+              title="Gerado pelo último sorteio da Loteria Federal. Você pode alterar manualmente."
             />
           </div>
         </div>
@@ -2404,7 +1530,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
           {renderCheckboxGroup('Proteção do Motor', 'motor_protecao')}
           {renderCheckboxGroup('Sistema de Direção', 'motor_sistemaOperacao')}
           {renderCheckboxGroup('Funcionamento, Folgas, Solda', 'motor_funcionamentoFolgas')}
-          {renderCheckboxGroup('Óleo Hidraul., Vazamentos, Tubulação', 'motor_oleoHidraulico')}
+          {renderCheckboxGroup('Ã“leo Hidraul., Vazamentos, Tubulação', 'motor_oleoHidraulico')}
           {renderCheckboxGroup('Alinhamento de Direção', 'motor_alinhamentoDirecao')}
           {renderCheckboxGroup('Transmissão', 'motor_transmissao')}
           {renderCheckboxGroup('Eixo Cardã, Integridade, Cinta', 'motor_eixoCarda')}
@@ -2474,7 +1600,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       {/* Medição dos Pneus - ESQUEMA COM VISUAL DE PNEU */}
       <div className={styles.section}>
         <h3 className={styles.sectionTitle}>13. Medição dos Pneus</h3>
-        
+
         {/* Campos superiores */}
         <div className={styles.grid3}>
           {renderInputField('Tipo de Pneu', 'medicao_tipoPneu', '(T) Traseiro | (L) Lado')}
@@ -2484,13 +1610,13 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
 
         {/* Grid principal com visual de pneu */}
         <div className={styles.medicaoGrid}>
-          
+
           {/* Cabeçalhos */}
           <div className={styles.medicaoLabel}></div>
           <div className={styles.medicaoHeader}>lado esquerdo</div>
           <div className={styles.medicaoHeader}>lado direito</div>
           <div className={styles.medicaoLabel}></div>
-          
+
           {/* LINHA 1 - Eixo 1 dianteiro */}
           <div className={styles.medicaoLabel}>eixo 1 esquerdo dianteiro do caminhão</div>
           <div className={styles.medicaoCampoSimples}>
@@ -2514,31 +1640,95 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
             </div>
           </div>
           <div className={styles.medicaoLabel}>eixo 1 direito dianteiro do caminhão</div>
-          
-          {/* LINHA 2 - Eixo 2 dianteiro */}
+
+          {/* LINHA 2 - Eixo 2 dianteiro (PAR - duplo) */}
           <div className={styles.medicaoLabel}>eixo 2 esquerdo dianteiro do caminhão</div>
-          <div className={styles.medicaoCampoSimples}>
-            <div className={styles.pneuField}>
-              <input
-                type="text"
-                value={(checklistData.medicao_linha2_esquerdo as string) || ''}
-                onChange={(e) => handleInputChange('medicao_linha2_esquerdo', e.target.value)}
-                placeholder="mm"
-              />
+          <div className={styles.medicaoCampoPar}>
+            <div className={styles.parContainer}>
+              <div className={styles.pneuField}>
+                <input
+                  type="text"
+                  value={(checklistData.medicao_linha2_esquerdo1 as string) || ''}
+                  onChange={(e) => handleInputChange('medicao_linha2_esquerdo1', e.target.value)}
+                  placeholder="mm"
+                />
+              </div>
+              <div className={styles.pneuField}>
+                <input
+                  type="text"
+                  value={(checklistData.medicao_linha2_esquerdo2 as string) || ''}
+                  onChange={(e) => handleInputChange('medicao_linha2_esquerdo2', e.target.value)}
+                  placeholder="mm"
+                />
+              </div>
             </div>
           </div>
-          <div className={styles.medicaoCampoSimples}>
-            <div className={styles.pneuField}>
-              <input
-                type="text"
-                value={(checklistData.medicao_linha2_direito as string) || ''}
-                onChange={(e) => handleInputChange('medicao_linha2_direito', e.target.value)}
-                placeholder="mm"
-              />
+          <div className={styles.medicaoCampoPar}>
+            <div className={styles.parContainer}>
+              <div className={styles.pneuField}>
+                <input
+                  type="text"
+                  value={(checklistData.medicao_linha2_direito1 as string) || ''}
+                  onChange={(e) => handleInputChange('medicao_linha2_direito1', e.target.value)}
+                  placeholder="mm"
+                />
+              </div>
+              <div className={styles.pneuField}>
+                <input
+                  type="text"
+                  value={(checklistData.medicao_linha2_direito2 as string) || ''}
+                  onChange={(e) => handleInputChange('medicao_linha2_direito2', e.target.value)}
+                  placeholder="mm"
+                />
+              </div>
             </div>
           </div>
           <div className={styles.medicaoLabel}>eixo 2 direito dianteiro do caminhão</div>
-          
+
+          {/* LINHA 6 - Eixo D3 dianteiro (PAR - duplo) */}
+          <div className={styles.medicaoLabel}>eixo 3 esquerdo dianteiro do caminhão (D3)</div>
+          <div className={styles.medicaoCampoPar}>
+            <div className={styles.parContainer}>
+              <div className={styles.pneuField}>
+                <input
+                  type="text"
+                  value={(checklistData.medicao_linha6_esquerdo1 as string) || ''}
+                  onChange={(e) => handleInputChange('medicao_linha6_esquerdo1', e.target.value)}
+                  placeholder="mm"
+                />
+              </div>
+              <div className={styles.pneuField}>
+                <input
+                  type="text"
+                  value={(checklistData.medicao_linha6_esquerdo2 as string) || ''}
+                  onChange={(e) => handleInputChange('medicao_linha6_esquerdo2', e.target.value)}
+                  placeholder="mm"
+                />
+              </div>
+            </div>
+          </div>
+          <div className={styles.medicaoCampoPar}>
+            <div className={styles.parContainer}>
+              <div className={styles.pneuField}>
+                <input
+                  type="text"
+                  value={(checklistData.medicao_linha6_direito1 as string) || ''}
+                  onChange={(e) => handleInputChange('medicao_linha6_direito1', e.target.value)}
+                  placeholder="mm"
+                />
+              </div>
+              <div className={styles.pneuField}>
+                <input
+                  type="text"
+                  value={(checklistData.medicao_linha6_direito2 as string) || ''}
+                  onChange={(e) => handleInputChange('medicao_linha6_direito2', e.target.value)}
+                  placeholder="mm"
+                />
+              </div>
+            </div>
+          </div>
+          <div className={styles.medicaoLabel}>eixo 3 direito dianteiro do caminhão (D3)</div>
+
           {/* LINHA 3 - Eixo 1 traseiro (PARES) */}
           <div className={styles.medicaoLabel}>eixo 1 traseiro do caminhão lado esquerdo</div>
           <div className={styles.medicaoCampoPar}>
@@ -2582,7 +1772,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
             </div>
           </div>
           <div className={styles.medicaoLabel}>eixo 1 traseiro do caminhão lado direito</div>
-          
+
           {/* LINHA 4 - Eixo 2 traseiro (PARES) */}
           <div className={styles.medicaoLabel}>eixo 2 traseiro do caminhão lado esquerdo</div>
           <div className={styles.medicaoCampoPar}>
@@ -2626,7 +1816,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
             </div>
           </div>
           <div className={styles.medicaoLabel}>eixo 2 traseiro do caminhão lado direito</div>
-          
+
           {/* LINHA 5 - Eixo 3 traseiro (PARES) */}
           <div className={styles.medicaoLabel}>eixo 3 traseiro do caminhão lado esquerdo</div>
           <div className={styles.medicaoCampoPar}>
@@ -2695,18 +1885,18 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
           {renderCheckboxGroup('Lanterna Indicadora de Direção Lateral', 'iluminacao_lanternaIndicadoraLateral')}
           {renderCheckboxGroup('Lanterna de Advertência', 'iluminacao_lanternaAdvertencia')}
           {renderCheckboxGroup('Lanterna Laterais', 'iluminacao_lanternaLaterais')}
-          {renderCheckboxGroup('Lanterna Lateral à Ré', 'iluminacao_lanternaLateralRe')}
+          {renderCheckboxGroup('Lanterna Lateral Ã  Ré', 'iluminacao_lanternaLateralRe')}
           {renderCheckboxGroup('Lanterna de Neblina Traseira', 'iluminacao_lanternaNeblina')}
           {renderCheckboxGroup('Lanterna de Projeção', 'iluminacao_lanternaProjecao')}
           {renderCheckboxGroup('Retrorefletores', 'iluminacao_retrorefletores')}
-          {/* ✨ NOVOS CAMPOS DE ILUMINAÇÃO */}
+          {/* âœ¨ NOVOS CAMPOS DE ILUMINAÇÃO */}
           {renderCheckboxGroup('Lanternas Delimitadoras Dianteira', 'iluminacao_delimitadoraDianteira')}
           {renderCheckboxGroup('Lanternas Delimitadoras Traseira', 'iluminacao_delimitadoraTraseira')}
           {renderCheckboxGroup('Lanternas de Direção Dianteira', 'iluminacao_direcaoDianteira')}
           {renderCheckboxGroup('Lanternas de Direção Traseira', 'iluminacao_direcaoTraseira')}
           {renderCheckboxGroup('Lanternas Intermitentes de Direção', 'iluminacao_intermitenteDirecao')}
           {renderCheckboxGroup('Lanternas Intermitentes de Advertência', 'iluminacao_intermitenteAdvertencia')}
-          {renderCheckboxGroup('Luz de Marcha-à-Ré', 'iluminacao_marchaRe')}
+          {renderCheckboxGroup('Luz de Marcha-Ã -Ré', 'iluminacao_marchaRe')}
           {renderCheckboxGroup('Luz de Identificação', 'iluminacao_identificacao')}
           {renderCheckboxGroup('Luz de Emergência', 'iluminacao_emergencia')}
         </div>
@@ -2756,7 +1946,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
         </div>
       </div>
 
-      {/* ✨ NOVAS SEÇÕES */}
+      {/* âœ¨ NOVAS SEÇÃ•ES */}
 
       {/* Sistema de Comunicação e Elétricos */}
       <div className={styles.section}>
@@ -2815,7 +2005,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       <div className={styles.section}>
         <h3 className={styles.sectionTitle}>25. Veículo Chassi Porta-Contêiner</h3>
         <div className={styles.checklistGrid}>
-          {renderCheckboxGroup('Atendimento à Res. Contran 725/18', 'chassiContainer_atendimentoRes725')}
+          {renderCheckboxGroup('Atendimento Ã  Res. Contran 725/18', 'chassiContainer_atendimentoRes725')}
           {renderCheckboxGroup('Dispositivos de Fixação Operacionais', 'chassiContainer_dispositivosFixacao')}
         </div>
       </div>
@@ -2854,7 +2044,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
       <div className={styles.section}>
         <h3 className={styles.sectionTitle}>29. Pino-Rei</h3>
         <div className={styles.checklistGrid}>
-          {renderCheckboxGroup('Fixação Vertical à Mesa', 'pinoRei_fixacaoVertical')}
+          {renderCheckboxGroup('Fixação Vertical Ã  Mesa', 'pinoRei_fixacaoVertical')}
           {renderInputField('Diâmetro em mm', 'pinoRei_diametroMm')}
           {renderCheckboxGroup('Trincas Observáveis', 'pinoRei_trincas')}
           {renderCheckboxGroup('Deformado', 'pinoRei_deformado')}
@@ -2923,9 +2113,9 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode 
 
       {/* Botão Submit */}
       <div className={styles.submitSection}>
-        <button 
-          type="submit" 
-          disabled={isSubmitting} 
+        <button
+          type="submit"
+          disabled={isSubmitting}
           className={styles.submitButton}
         >
           {isSubmitting ? '⏳ Criando Laudo...' : '📋 Criar Laudo CHECKLIST'}
