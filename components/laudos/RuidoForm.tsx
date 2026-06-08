@@ -80,6 +80,8 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode, ini
     maxMarchaLenta: 0,
   });
 
+  const [ruidoMaxManualOverride, setRuidoMaxManualOverride] = useState(false);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const [showPdfButton, setShowPdfButton] = useState(false);
@@ -243,7 +245,13 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode, ini
 
   // Recalcular estatísticas quando medições mudarem
   useEffect(() => {
-    calculateStatistics();
+    const newCalcs = calculateStatistics();
+    if (!ruidoMaxManualOverride) {
+      const globalMax = Math.max(newCalcs.maxAceleracao, newCalcs.maxMarchaLenta);
+      if (globalMax > 0) {
+        setRuidoData(prev => ({ ...prev, ruidoMaximoMedido: globalMax }));
+      }
+    }
   }, [
     ruidoData.aceleracao1, ruidoData.aceleracao2, ruidoData.aceleracao3,
     ruidoData.aceleracao4, ruidoData.aceleracao5, ruidoData.aceleracao6,
@@ -316,7 +324,13 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode, ini
     if (name.includes('aceleracao') || name.includes('marchaLenta') || name === 'ruidoMaximoMedido') {
       // Permitir string vazia para limpeza do campo
       if (value === '') {
-        setRuidoData(prev => ({ ...prev, [name]: name === 'ruidoMaximoMedido' ? undefined : 0 }));
+        if (name === 'ruidoMaximoMedido') {
+          const globalMax = Math.max(calculations.maxAceleracao, calculations.maxMarchaLenta);
+          setRuidoData(prev => ({ ...prev, ruidoMaximoMedido: globalMax > 0 ? globalMax : undefined }));
+          setRuidoMaxManualOverride(false);
+        } else {
+          setRuidoData(prev => ({ ...prev, [name]: 0 }));
+        }
         return;
       }
 
@@ -331,6 +345,9 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode, ini
         return; // Não atualizar se valor fora do range
       }
 
+      if (name === 'ruidoMaximoMedido') {
+        setRuidoMaxManualOverride(true);
+      }
       setRuidoData(prev => ({ ...prev, [name]: numValue }));
     } else if (name === 'dataVencimento') {
       // Validar formato DD/MM/AAAA para data de vencimento
@@ -377,12 +394,14 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode, ini
       ruidoData.marchaLenta4, ruidoData.marchaLenta5, ruidoData.marchaLenta6
     ];
 
-    setCalculations({
+    const newCalcs = {
       medianaAceleracao: calculateMedian(aceleracaoValues),
       maxAceleracao: Math.max(...aceleracaoValues),
       medianaMarchaLenta: calculateMedian(marchaLentaValues),
       maxMarchaLenta: Math.max(...marchaLentaValues),
-    });
+    };
+    setCalculations(newCalcs);
+    return newCalcs;
   };
 
   const generateHTML = async (laudoRuidoId: string) => {
@@ -560,6 +579,7 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode, ini
           codTemporal: temporalCode,
           observacoes: 'Ensaio realizado conforme INSTRUÇÃO NORMATIVA IBAMA Nº 6, DE 8 DE JUNHO DE 2010. NBR 9714 - Veículo rodoviário automotor - Ruído emitido na condição parado',
         });
+        setRuidoMaxManualOverride(false);
         // Atualizar código temporal real após reset
         fetchTemporalCode();
       }, 10000);
@@ -819,7 +839,14 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode, ini
         <legend className={styles.legend}>6. Resultado Final</legend>
         <div className={styles.grid}>
           <div className={styles.inputGroup}>
-            <label className={styles.label}>Ruído Máximo Medido (dB) - Manual</label>
+            <label className={styles.label}>
+              Ruído Máximo Medido (dB)
+              {!ruidoMaxManualOverride && (
+                <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginLeft: '0.5rem', fontWeight: 'normal' }}>
+                  (auto)
+                </span>
+              )}
+            </label>
             <input
               type="number"
               name="ruidoMaximoMedido"
@@ -829,8 +856,25 @@ export default function RuidoForm({ clients, nextOrdemServico, temporalCode, ini
               step="0.1"
               min={RUIDO_MIN_VALUE}
               max={RUIDO_MAX_VALUE}
-              placeholder="Ex: 78.5"
+              placeholder="Auto-calculado pelas medições"
             />
+            {(() => {
+              const globalMax = Math.max(calculations.maxAceleracao, calculations.maxMarchaLenta);
+              const manual = ruidoData.ruidoMaximoMedido;
+              if (
+                ruidoMaxManualOverride &&
+                typeof manual === 'number' &&
+                globalMax > 0 &&
+                manual < globalMax - 0.05
+              ) {
+                return (
+                  <p style={{ color: '#f59e0b', fontSize: '0.8rem', marginTop: '0.25rem', lineHeight: 1.3 }}>
+                    ⚠️ Valor manual ({manual.toFixed(1)} dB) abaixo do máximo medido ({globalMax.toFixed(1)} dB). Limpe para usar o valor calculado.
+                  </p>
+                );
+              }
+              return null;
+            })()}
           </div>
           <div className={styles.inputGroup}>
             <label className={styles.label}>Resultado</label>
