@@ -48,31 +48,14 @@ export async function GET(request: NextRequest) {
     }
     
     // Filtro de busca (OS, placa, cliente)
-    if (search) {
-      const searchTerm = search.toLowerCase();
+    // SQLite: LIKE é case-insensitive ASCII por padrão; `mode: 'insensitive'` não
+    // é suportado pelo provider SQLite e dispara erro de validação no Prisma 6.
+    if (search.trim()) {
+      const searchTerm = search.trim();
       where.OR = [
-        {
-          ordemServico: {
-            contains: searchTerm,
-            mode: 'insensitive'
-          }
-        },
-        {
-          vehicle: {
-            placa: {
-              contains: searchTerm,
-              mode: 'insensitive'
-            }
-          }
-        },
-        {
-          client: {
-            name: {
-              contains: searchTerm,
-              mode: 'insensitive'
-            }
-          }
-        }
+        { ordemServico: { contains: searchTerm } },
+        { vehicle: { placa: { contains: searchTerm } } },
+        { client: { name: { contains: searchTerm } } },
       ];
     }
     
