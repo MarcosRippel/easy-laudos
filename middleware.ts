@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const PUBLIC_ROUTES = ['/login'];
 const PUBLIC_PREFIXES = ['/verificar/'];
-const ADMIN_ROUTES = ['/admin'];
+// `/admin` (Painel do Inspetor) e `/admin/equipments` são acessíveis a qualquer
+// usuário autenticado — settings são multi-tenant por userId. Apenas a gestão
+// de usuários (`/admin/users`) é restrita a admin.
+const ADMIN_ROUTES = ['/admin/users'];
 const SESSION_MAX_AGE = 8 * 60 * 60 * 1000;
 
 function resolveBaseUrl(request: NextRequest): URL {
