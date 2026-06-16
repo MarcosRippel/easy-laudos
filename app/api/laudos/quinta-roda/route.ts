@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getSessionFromRequest } from '@/lib/middleware-auth';
 import { CreateQuintaRodaData, validateRequiredFields, validateDateFormat, SimNao, AprovaReprovado } from '@/types/quinta-roda';
 
 // Função para validar enums
@@ -9,6 +10,11 @@ function validateEnum<T>(value: any, allowedValues: T[]): value is T {
 
 export async function GET(request: NextRequest) {
   try {
+    const session = getSessionFromRequest(request);
+    if (!session) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
@@ -52,8 +58,13 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const session = getSessionFromRequest(request);
+    if (!session) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
     const body: CreateQuintaRodaData = await request.json();
     
     // LOG DETALHADO DOS CAMPOS DE IMAGEM RECEBIDOS

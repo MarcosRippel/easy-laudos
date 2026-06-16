@@ -1,9 +1,15 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { getSessionFromRequest } from '@/lib/middleware-auth';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const session = getSessionFromRequest(request);
+    if (!session) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
     const [clientCount, vehicleCount, laudoCount, byTypeRaw, allLaudos] = await Promise.all([
       prisma.client.count(),
       prisma.vehicle.count(),

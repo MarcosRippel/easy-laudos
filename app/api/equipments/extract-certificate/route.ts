@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getSessionFromRequest } from '@/lib/middleware-auth';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 if (!GEMINI_API_KEY) console.error('⚠️  [extract-certificate] GEMINI_API_KEY não configurada no .env');
@@ -109,6 +110,11 @@ async function tryExtract(base64: string, mimeType: string): Promise<ExtractedEq
 
 export async function POST(request: NextRequest) {
     console.log('🔥 [extract-certificate] Requisição recebida');
+
+    const session = getSessionFromRequest(request);
+    if (!session) {
+        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
 
     try {
         const formData = await request.formData();

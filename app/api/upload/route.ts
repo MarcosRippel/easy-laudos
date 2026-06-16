@@ -1,5 +1,6 @@
 // app/api/upload/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { getSessionFromRequest } from '@/lib/middleware-auth';
 import { promises as fs } from 'fs';
 import path from 'path';
 
@@ -11,6 +12,11 @@ export const config = {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = getSessionFromRequest(req);
+    if (!session) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
     const data = await req.formData();
     const file: File | null = data.get('file') as unknown as File;
 

@@ -1,9 +1,15 @@
 // app/api/laudos/next-os/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getSessionFromRequest } from '@/lib/middleware-auth';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const session = getSessionFromRequest(request);
+    if (!session) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
     // Buscar todos os laudos e encontrar o maior número de OS
     // Ordenamos por createdAt desc e pegamos o mais recente, mas verificamos
     // TODOS os laudos para garantir que não haja colisão

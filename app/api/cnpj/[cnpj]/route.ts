@@ -1,9 +1,15 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getSessionFromRequest } from '@/lib/middleware-auth';
 
 export async function GET(
-    request: Request,
+    request: NextRequest,
     { params }: { params: Promise<{ cnpj: string }> }
 ) {
+    const session = getSessionFromRequest(request);
+    if (!session) {
+        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
     const { cnpj } = await params;
     const cleanedCnpj = cnpj.replace(/\D/g, '');
 

@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getSessionFromRequest } from '@/lib/middleware-auth';
 
 // Tipos de laudo — label amigável para a mensagem WhatsApp
 const LAUDO_TYPE_LABELS: Record<string, string> = {
@@ -26,8 +27,13 @@ function parseDateBR(dateStr: string | null | undefined): Date | null {
     return null;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
+        const session = getSessionFromRequest(request);
+        if (!session) {
+            return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        }
+
         const now = new Date();
         now.setHours(0, 0, 0, 0);
 

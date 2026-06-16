@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSessionFromRequest } from '@/lib/middleware-auth';
 import { promises as fs } from 'fs';
 import path from 'path';
 
@@ -16,6 +17,11 @@ export async function GET(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
+    const session = getSessionFromRequest(request);
+    if (!session) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
     const { path: pathSegments } = await params;
     const filename = pathSegments.join('/');
 

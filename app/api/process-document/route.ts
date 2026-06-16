@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSessionFromRequest } from '@/lib/middleware-auth';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -82,6 +83,11 @@ async function tryExtract(base64: string, mimeType: string): Promise<string> {
 }
 
 export async function POST(request: NextRequest) {
+  const session = getSessionFromRequest(request);
+  if (!session) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
+
   console.log('🔥 API /process-document CHAMADA RECEBIDA! (Gemini)');
 
   try {

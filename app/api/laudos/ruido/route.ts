@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getSessionFromRequest } from '@/lib/middleware-auth';
 import type { CreateRuidoData, RuidoCalculations } from '@/types/ruido';
 
 // Função para calcular mediana
@@ -36,8 +37,13 @@ function calculateRuidoStatistics(data: CreateRuidoData): RuidoCalculations {
   };
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const session = getSessionFromRequest(request);
+    if (!session) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
     const body: CreateRuidoData = await request.json();
 
     // Validações básicas
