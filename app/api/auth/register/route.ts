@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Configuração do Telegram Bot (mesmo do sistema)
-const TELEGRAM_BOT_TOKEN = "***REMOVED-TELEGRAM-BOT-TOKEN***";
-const TELEGRAM_CHAT_ID = "-1002594596544"; // Grupo convertido para formato de bot
-const TELEGRAM_TOPIC_ID = "1534";
+// Configuração do Telegram Bot (via variáveis de ambiente — ver .env)
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+const TELEGRAM_TOPIC_ID = process.env.TELEGRAM_TOPIC_ID;
 
 async function sendTelegramMessage(message: string) {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+    console.warn('[register] TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID não configurados no .env — pulando notificação');
+    return false;
+  }
   try {
     const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
     
