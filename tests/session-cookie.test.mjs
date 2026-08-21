@@ -87,6 +87,18 @@ test('sem SESSION_SECRET nada e assinado nem aceito (fail-closed)', async () => 
   process.env.SESSION_SECRET = SECRET;
 });
 
+test('placeholder CHANGE_ME do .env.example e RECUSADO mesmo sendo longo', async () => {
+  const cookieValido = await signSession(admin);
+
+  // exatamente o valor que `cp .env.example .env` deixa no ambiente
+  process.env.SESSION_SECRET = 'CHANGE_ME__gere_com_openssl_rand_base64_32';
+  assert.equal(hasSessionSecret(), false);
+  await assert.rejects(() => signSession(admin), /CHANGE_ME/);
+  assert.equal(await verifySession(cookieValido), null, 'segredo publico do repo nao pode validar sessao');
+
+  process.env.SESSION_SECRET = SECRET;
+});
+
 test('cookie vazio, ausente ou sem versao e RECUSADO', async () => {
   for (const valor of [undefined, null, '', '...', 'v2.abc.def', 'abc.def']) {
     assert.equal(await verifySession(valor), null, `deveria recusar: ${String(valor)}`);

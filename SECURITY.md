@@ -31,7 +31,9 @@ Não há garantia de prazo fixo de resposta — para um problema crítico com ex
 `SESSION_SECRET` (mínimo 32 caracteres, `openssl rand -base64 32`) assina o
 cookie de sessão, e `AUTH_SALT` alimenta o hash de senha legado. Nenhuma das
 duas tem valor padrão no código: sem elas o app recusa login e sessão em vez de
-cair para um segredo previsível. Trocar `SESSION_SECRET` invalida todas as
+cair para um segredo previsível. O placeholder `CHANGE_ME…` do `.env.example`
+também é recusado — um segredo publicado no repositório assinaria cookie que
+qualquer pessoa forja. Trocar `SESSION_SECRET` invalida todas as
 sessões abertas — é o que fazer ao suspeitar de vazamento.
 
 ## Segredos já expostos no histórico

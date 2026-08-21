@@ -40,11 +40,27 @@ const SESSION_VERSION = 'v1';
  */
 const MIN_SECRET_LENGTH = 32;
 
+/**
+ * O placeholder do `.env.example` comeca com isto. Um segredo que qualquer
+ * pessoa le no repositorio publico assina cookie que qualquer pessoa forja —
+ * seria o bypass antigo de volta por outra porta, so que silencioso.
+ */
+const PLACEHOLDER_PREFIX = 'CHANGE_ME';
+
+function isUsableSecret(secret: string | undefined): secret is string {
+  return (
+    typeof secret === 'string' &&
+    secret.length >= MIN_SECRET_LENGTH &&
+    !secret.startsWith(PLACEHOLDER_PREFIX)
+  );
+}
+
 function getSecret(): string {
   const secret = process.env.SESSION_SECRET;
-  if (!secret || secret.length < MIN_SECRET_LENGTH) {
+  if (!isUsableSecret(secret)) {
     throw new Error(
-      `SESSION_SECRET ausente ou curto demais (minimo ${MIN_SECRET_LENGTH} chars). ` +
+      `SESSION_SECRET ausente, curto demais (minimo ${MIN_SECRET_LENGTH} chars) ` +
+        'ou ainda com o placeholder CHANGE_ME do .env.example. ' +
         'Gere com `openssl rand -base64 32` e defina no ambiente — ver .env.example.'
     );
   }
@@ -53,8 +69,7 @@ function getSecret(): string {
 
 /** Indica se o ambiente tem um `SESSION_SECRET` utilizavel. */
 export function hasSessionSecret(): boolean {
-  const secret = process.env.SESSION_SECRET;
-  return typeof secret === 'string' && secret.length >= MIN_SECRET_LENGTH;
+  return isUsableSecret(process.env.SESSION_SECRET);
 }
 
 function base64UrlEncode(bytes: Uint8Array): string {
