@@ -57,13 +57,13 @@ import { createHash } from 'crypto';
 
 function hashPassword(password: string): string {
   return createHash('sha256')
-    .update(password + (process.env.AUTH_SALT || 'gts-salt'))
+    .update(password + salt) // salt = process.env.AUTH_SALT — obrigatório; sem ele o app lança erro
     .digest('hex');
 }
 ```
 
 - **Algoritmo**: SHA-256
-- **Salt**: Variável de ambiente `AUTH_SALT` (fallback: `'gts-salt'`)
+- **Salt**: Variável de ambiente `AUTH_SALT` (obrigatória — sem fallback embutido; o hash legado só é verificado se ela estiver definida)
 - **Armazenamento**: Hash hex no campo `password` da tabela `User`
 
 ---
