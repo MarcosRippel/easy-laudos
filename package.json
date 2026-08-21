@@ -1,7 +1,13 @@
 {
   "name": "easy-laudos",
   "version": "0.1.0",
-  "private": true,
+  "description": "Sistema web de emissão de laudos técnicos de inspeção veicular (checklist, LIT, ruído, pino-rei e quinta-roda) com geração de PDF e conformidade às normas brasileiras.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MarcosRippel/general-laudos"
+  },
+  "homepage": "https://github.com/MarcosRippel/general-laudos#readme",
   "scripts": {
     "dev": "next dev -H 127.0.0.1 -p 3006 --turbopack",
     "build": "next build",
