@@ -1,40 +1,68 @@
 node_modules
+/node_modules/
+**/node_modules/
 
-# Env / segredos
-.env
-.env.local
-.env.production
-.env*.local
+# --- Env / segredos ---------------------------------------------------------
+# Bloqueia TODO .env* (inclusive .env.production, que ja foi commitado por
+# engano no passado). A unica excecao e o exemplo, que nao carrega valor real.
+.env*
+!.env.example
 
-# Next.js build
+# --- Chaves, certificados e material criptografico --------------------------
+ssl/
+*.key
+*.pem
+*.pfx
+*.p12
+*.crt
+*.cer
+*.der
+
+# --- Next.js build ----------------------------------------------------------
 /.next/
+.next/
 /out/
 tsconfig.tsbuildinfo
 
-# Banco SQLite (dev) e backups
+# --- Banco SQLite (dev) e backups -------------------------------------------
 *.db
 *.db-journal
 *.db.backup*
+*.sqlite
+*.sqlite3
 dev.db
+migration/backups/
+launcher-production/backups/
 
-# Logs
+# --- Logs -------------------------------------------------------------------
 /logs/
 *.log
+migration/logs/
+launcher-production/logs/
 
-# Feedback storage / uploads em runtime
+# --- Dumps / pacotes --------------------------------------------------------
+*.zip
+*.tar
+*.tar.gz
+*.7z
+*.bak
+
+# --- Feedback storage / uploads em runtime ----------------------------------
 data/
 public/uploads/
+uploads/
 
-# Screenshots / rascunhos
+# --- Screenshots / rascunhos ------------------------------------------------
 /_screenshots/
 
-# IDE / tooling
+# --- IDE / tooling ----------------------------------------------------------
 .vscode/
 .overclock-app/
 .claude/
+.codex/
 *.code-workspace
 
-# Repos aninhados / pastas locais de asset e teste (nao versionar)
+# --- Repos aninhados / pastas locais de asset e teste (nao versionar) -------
 /general-emissor/
 /0 Logos/
 /arquivos para teste/
