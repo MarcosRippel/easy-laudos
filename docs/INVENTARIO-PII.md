@@ -72,9 +72,9 @@ continuar fechando com o levantamento original.
 
 ### PENDENTE — achado fora do escopo do inventário original
 
-| # | Achado | Por que ficou pendente |
-|---|---|---|
-| P1 | O **hostname de produção do operador** (domínio próprio, sem parte local de e-mail) aparece em **76 arquivos** — configs de nginx/Traefik/Docker, `.bat` de instalação, docs de DNS e URLs de fallback em código. | O inventário decidiu remédio só para o **e-mail** do operador (B19–B21), não para o hostname nu, e o hostname não é PII de terceiro: é a infra do dono do repositório, e publicá-la é decisão dele. Remover exigiria parametrizar 76 arquivos por variável de ambiente — trabalho de card próprio. **Nada foi aplicado.** |
+| # | Achado | Estado | Por que ficou pendente |
+|---|---|---|---|
+| P1 | O **hostname de produção do operador** (domínio próprio, sem parte local de e-mail) aparece em **76 arquivos** — configs de nginx/Traefik/Docker, `.bat` de instalação, docs de DNS e URLs de fallback em código. | **PENDENTE** | O inventário decidiu remédio só para o **e-mail** do operador (B19–B21), não para o hostname nu, e o hostname não é PII de terceiro: é a infra do dono do repositório, e publicá-la é decisão dele. Remover exigiria parametrizar 76 arquivos por variável de ambiente — trabalho de card próprio. **Nada foi aplicado.** |
 
 ---
 
