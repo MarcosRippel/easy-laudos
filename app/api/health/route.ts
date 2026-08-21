@@ -6,7 +6,7 @@ export async function GET() {
       status: 'healthy', 
       timestamp: new Date().toISOString(),
       version: process.env.npm_package_version || '1.0.0',
-      domain: 'inspetor.terpens.com.br'
+      domain: process.env.NEXT_PUBLIC_BASE_URL || null
     });
   } catch (error) {
     return NextResponse.json(

@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 
+// Host publico desta instalacao (NEXT_PUBLIC_BASE_URL). Vazio => nao exibido.
+const PUBLIC_HOST = (process.env.NEXT_PUBLIC_BASE_URL || '').replace(/^https?:\/\//, '').replace(/\/+$/, '');
+
 interface LaudoData {
     valid: boolean;
     hash: string;
@@ -442,7 +445,7 @@ export default function VerificarPage() {
                         </div>
 
                         <div className="powered-by">
-                            Verificado por <span>General Inspetor</span> · generalinspetor.terpens.com.br
+                            Verificado por <span>General Inspetor</span>{PUBLIC_HOST ? ` · ${PUBLIC_HOST}` : ''}
                         </div>
                     </>
                 )}

@@ -32,13 +32,13 @@ tsconfig.tsbuildinfo
 *.sqlite3
 dev.db
 migration/backups/
-launcher-production/backups/
+# relatorio de validacao carrega hostname da maquina que rodou
+migration/validation-report-*.json
 
 # --- Logs -------------------------------------------------------------------
 /logs/
 *.log
 migration/logs/
-launcher-production/logs/
 
 # --- Dumps / pacotes --------------------------------------------------------
 *.zip

@@ -124,18 +124,3 @@ npx prisma studio    # GUI do banco de dados
 npx prisma migrate dev  # Nova migration
 npx prisma generate  # Regenerar client
 ```
-
-
-## 🕸️ Graphify (knowledge graph)
-
-Este repo faz parte do ecossistema GTS que usa **graphify** para mapear código em grafo de conhecimento.
-Manual completo: ver `MANUTENCAO-GRAPHIFY.md` na raiz deste repo.
-
-Se existir `graphify-out/graph.json` aqui, leia `graphify-out/GRAPH_REPORT.md` antes de usar grep/glob.
-
-**Comandos essenciais:**
-- `/graphify .` — pipeline completo (1ª vez, custa tokens)
-- `graphify update .` — rebuild AST (grátis, seguro de rodar sempre)
-- `graphify query "pergunta"` — consulta no grafo (grátis)
-
-Painel de controle: http://localhost:9000 → card 🕸️ Graphify Watch.

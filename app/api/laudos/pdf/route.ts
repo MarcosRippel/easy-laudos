@@ -7,7 +7,7 @@ import type { Client, Vehicle, Laudo, AdminSetting } from '@prisma/client';
 import type { Equipment } from '@/types/equipment';
 import { prisma } from '@/lib/prisma';
 import { getSessionFromRequest } from '@/lib/middleware-auth';
-import { getOrCreateLaudoHash } from '@/lib/laudoHash';
+import { getOrCreateLaudoHash, getPublicBaseHost } from '@/lib/laudoHash';
 import { companyHeaderLine } from '@/lib/companyIdentity';
 
 // Função para gerar PDF de laudo de ruído
@@ -1703,7 +1703,7 @@ async function generateChecklistHTML(fullLaudo: Laudo & { client: Client; vehicl
             <div style="flex: 1; line-height: 1.35;">
                 <div style="font-size: 8px; color: #444; margin-bottom: 2px;">Documento gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')} - Sistema GTS</div>
                 <div style="font-size: 7px; color: #555; font-family: monospace; word-break: break-all;">${documentHash ? `SHA-256: ${documentHash.substring(0, 40)}...` : ''}</div>
-                <div style="font-size: 7px; color: #444; margin-top: 2px;">${documentHash ? `Verifique autenticidade em: generalinspetor.terpens.com.br/verificar/${documentHash}` : ''}</div>
+                <div style="font-size: 7px; color: #444; margin-top: 2px;">${documentHash ? `Verifique autenticidade em: ${getPublicBaseHost()}/verificar/${documentHash}` : ''}</div>
             </div>
             ${qrCodeSvg ? `<div style="width: 64px; height: 64px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
                 <div style="width: 60px; height: 60px;">${qrCodeSvg}</div>

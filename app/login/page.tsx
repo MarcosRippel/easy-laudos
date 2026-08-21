@@ -7,6 +7,14 @@ import styles from './LoginPage.module.css';
 const LOGO_SIMPLES = '/branding/logo-bonito-simples-transparent.png';
 const LOGO_BONITO = '/branding/logo-bonito.png';
 
+// Identidade e links externos desta instalacao. Nenhum dominio fica embutido no
+// codigo: cada um vem do ambiente (ver .env.example) e, quando nao configurado,
+// o bloco correspondente simplesmente nao aparece na pagina.
+const MAINTAINER_NAME = process.env.NEXT_PUBLIC_MAINTAINER_NAME || 'General Inspetor';
+const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || '';
+const SIBLING_APP_URL = process.env.NEXT_PUBLIC_SIBLING_APP_URL || '';
+const SIBLING_APP_NAME = process.env.NEXT_PUBLIC_SIBLING_APP_NAME || 'General TMS';
+
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -385,15 +393,17 @@ export default function LoginPage() {
               Truck Management System completo para transportadoras
               que buscam excelência operacional.
             </p>
-            <a
-              href="https://generaltms.terpens.com.br"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.integrationLink}
-            >
-              <span>Acessar General TMS</span>
-              <span>↗</span>
-            </a>
+            {SIBLING_APP_URL && (
+              <a
+                href={SIBLING_APP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.integrationLink}
+              >
+                <span>Acessar {SIBLING_APP_NAME}</span>
+                <span>↗</span>
+              </a>
+            )}
           </div>
         </div>
       </section>
@@ -444,17 +454,19 @@ export default function LoginPage() {
 
           <div className={styles.footerSection}>
             <h3>Suporte</h3>
-            <a href="mailto:suporte@example.com">suporte@example.com</a>
+            {SUPPORT_EMAIL && <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>}
             <p>Atendimento especializado</p>
             <p>Onboarding e treinamento</p>
           </div>
 
           <div className={styles.footerSection}>
             <h3>Ecossistema</h3>
-            <p>Integrado ao GENERAL TMS</p>
-            <a href="https://sys.terpens.com.br" target="_blank" rel="noopener noreferrer">
-              Acessar GENERAL TMS ↗
-            </a>
+            <p>Integrado ao {SIBLING_APP_NAME}</p>
+            {SIBLING_APP_URL && (
+              <a href={SIBLING_APP_URL} target="_blank" rel="noopener noreferrer">
+                Acessar {SIBLING_APP_NAME} ↗
+              </a>
+            )}
           </div>
         </div>
 
@@ -467,9 +479,9 @@ export default function LoginPage() {
             Disponível como app — instale após o login
           </span>
           <br />
-          © 2026 General Inspetor · Todos os direitos reservados ·{' '}
-          <a href="https://terpens.com.br/" target="_blank" rel="noopener noreferrer">
-            Desenvolvido por Terpens LLC
+          © 2026 {MAINTAINER_NAME} — licenciado sob a{' '}
+          <a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener noreferrer">
+            MIT
           </a>
         </div>
       </footer>

@@ -4,7 +4,12 @@ import { createHash } from 'crypto';
 const BCRYPT_ROUNDS = 12;
 
 function sha256Legacy(password: string): string {
-  return createHash('sha256').update(password + (process.env.AUTH_SALT || 'gts-salt')).digest('hex');
+  const salt = process.env.AUTH_SALT;
+  if (!salt) {
+    // Sem fallback embutido: um salt padrao no codigo publico anularia o hash.
+    throw new Error('AUTH_SALT nao configurado — defina AUTH_SALT no ambiente (ver .env.example).');
+  }
+  return createHash('sha256').update(password + salt).digest('hex');
 }
 
 export async function hashPassword(password: string): Promise<string> {

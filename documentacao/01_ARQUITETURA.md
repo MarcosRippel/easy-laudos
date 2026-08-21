@@ -191,7 +191,6 @@ easy-laudos/
 ├── public/                       # Assets estáticos
 ├── ssl/                          # Certificados SSL
 ├── migration/                    # Scripts de migração (128 itens)
-├── launcher-production/          # Scripts de deploy produção
 ├── docker/                       # Config Docker
 └── documentacao/                 # 📚 ESTA PASTA DE DOCUMENTAÇÃO
 ```

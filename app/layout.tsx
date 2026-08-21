@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     description: "Plataforma profissional de laudos técnicos.",
     images: ["/branding/og-image.jpg"],
   },
-  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "https://generalinspetor.terpens.com.br"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3006"),
 };
 
 export const viewport: Viewport = {

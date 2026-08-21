@@ -123,7 +123,6 @@ O sistema implementa uma arquitetura **Monolítica Modular** com separação cla
 │
 ├── docker/               # Configurações Docker
 ├── migration/            # Scripts de migração
-├── launcher-production/  # Scripts de produção
 └── ssl/                  # Certificados SSL
 ```
 

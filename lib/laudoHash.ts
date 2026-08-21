@@ -1,7 +1,17 @@
 import { createHash } from 'crypto';
 import QRCode from 'qrcode';
 
-const PUBLIC_BASE_URL = 'https://generalinspetor.terpens.com.br';
+// URL publica onde esta instalacao responde — usada no QR Code e no rodape do
+// laudo. Configure NEXT_PUBLIC_BASE_URL no ambiente; sem ela, cai para o host
+// local (o QR aponta para a propria maquina, nao para o dominio de ninguem).
+export function getPublicBaseUrl(): string {
+    return (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3006').replace(/\/+$/, '');
+}
+
+/** Mesma URL sem o esquema, para exibir em texto impresso. */
+export function getPublicBaseHost(): string {
+    return getPublicBaseUrl().replace(/^https?:\/\//, '');
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let prismaInstance: any;
@@ -25,7 +35,7 @@ export function generateLaudoHash(laudoId: string, placa: string, dataEmissao: D
  * Gera o SVG do QR Code apontando para a página pública de verificação
  */
 export async function generateQRCodeSVG(hash: string): Promise<string> {
-    const url = `${PUBLIC_BASE_URL}/verificar/${hash}`;
+    const url = `${getPublicBaseUrl()}/verificar/${hash}`;
     try {
         const svgString = await QRCode.toString(url, {
             type: 'svg',
@@ -89,5 +99,5 @@ export async function getOrCreateLaudoHash(
  * Retorna a URL pública de verificação a partir do hash
  */
 export function getVerifyUrl(hash: string): string {
-    return `${PUBLIC_BASE_URL}/verificar/${hash}`;
+    return `${getPublicBaseUrl()}/verificar/${hash}`;
 }
