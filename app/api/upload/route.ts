@@ -12,7 +12,7 @@ export const config = {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = getSessionFromRequest(req);
+    const session = await getSessionFromRequest(req);
     if (!session) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }

@@ -2,22 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/auth';
 import { cookies } from 'next/headers';
+import { SESSION_COOKIE_NAME, verifySession } from '@/lib/session-cookie';
 
-// Função para verificar se o usuário é admin
-async function isAdmin() {
+// Sessão do cookie assinado — `null` quando a assinatura não confere.
+async function currentSession() {
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get('gts_session');
-  
-  if (!sessionCookie) {
-    return false;
-  }
-  
-  try {
-    const sessionData = JSON.parse(sessionCookie.value);
-    return sessionData.role === 'admin';
-  } catch {
-    return false;
-  }
+  return verifySession(cookieStore.get(SESSION_COOKIE_NAME)?.value);
+}
+
+// Só é admin quem apresenta um cookie que NÓS assinamos e cujo papel é admin.
+async function isAdmin() {
+  const session = await currentSession();
+  return session?.role === 'admin';
 }
 
 // GET - Listar todos os usuários (apenas admin)

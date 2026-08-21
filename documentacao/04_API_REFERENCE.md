@@ -19,7 +19,7 @@ Todos os endpoints (exceto auth/login) requerem cookie `gts_session` válido.
 | GET | `/api/auth/me` | Retorna usuário logado | - |
 | POST | `/api/auth/register` | Registrar novo usuário (admin only) | `{username, password, role}` |
 
-**Cookie**: `gts_session` → JSON `{userId, username, role, loginTime}` com `maxAge: 8h`
+**Cookie**: `gts_session` → `v1.<payload base64url>.<HMAC-SHA256 base64url>`, com o payload `{userId, username, role, loginTime}` e `maxAge: 8h`. A assinatura usa `SESSION_SECRET`; um cookie montado à mão é recusado.
 
 ---
 

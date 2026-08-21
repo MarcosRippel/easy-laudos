@@ -29,7 +29,7 @@ function extensionFor(mime: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = getSessionFromRequest(request);
+    const user = await getSessionFromRequest(request);
     if (!user) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   // Lista os últimos N feedbacks (somente admin)
   try {
-    const user = getSessionFromRequest(request);
+    const user = await getSessionFromRequest(request);
     if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }

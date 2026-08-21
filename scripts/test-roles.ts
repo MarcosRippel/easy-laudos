@@ -10,6 +10,7 @@
  */
 import { USER_ROLES, CLIENT_ROLES, ROLE_LABELS, roleLabel, isUserRole, isAdmin, isClientUser } from '../lib/roles';
 import { requireAuth, requireAdmin, requireClientUser, getSessionFromRequest } from '../lib/middleware-auth';
+import { signSession } from '../lib/session-cookie';
 import type { AuthUser } from '../lib/roles';
 
 let failures = 0;
@@ -54,20 +55,28 @@ check('requireClientUser(<papel legado>)', requireClientUser(user('legacy_role_1
 check('requireClientUser(null)', requireClientUser(null), false);
 
 console.log('--- sessao (cookie) ---');
-const fakeRequest = (role: string) =>
+process.env.SESSION_SECRET ||= 'segredo-de-teste-com-32-chars-no-minimo-ok';
+
+const requestWithCookie = (value: string | undefined) =>
   ({
     cookies: {
-      get: (name: string) =>
-        name === 'gts_session'
-          ? { value: JSON.stringify({ userId: 'u1', username: 'u1', role, loginTime: Date.now() }) }
-          : undefined,
+      get: (name: string) => (name === 'gts_session' && value ? { value } : undefined),
     },
   }) as unknown as Parameters<typeof getSessionFromRequest>[0];
 
-check("sessao com 'client_a' e aceita", getSessionFromRequest(fakeRequest('client_a'))?.role, 'client_a');
-check("sessao com 'client_b' e aceita", getSessionFromRequest(fakeRequest('client_b'))?.role, 'client_b');
-check("sessao com 'admin' e aceita", getSessionFromRequest(fakeRequest('admin'))?.role, 'admin');
-check('sessao com papel legado e recusada (banco sem migration)', getSessionFromRequest(fakeRequest('legacy_role_1')), null);
+const signedRequest = async (role: string) =>
+  requestWithCookie(
+    await signSession({ userId: 'u1', username: 'u1', role, loginTime: Date.now() })
+  );
+
+check("sessao assinada com 'client_a' e aceita", (await getSessionFromRequest(await signedRequest('client_a')))?.role, 'client_a');
+check("sessao assinada com 'client_b' e aceita", (await getSessionFromRequest(await signedRequest('client_b')))?.role, 'client_b');
+check("sessao assinada com 'admin' e aceita", (await getSessionFromRequest(await signedRequest('admin')))?.role, 'admin');
+check('sessao assinada com papel legado e recusada (banco sem migration)', await getSessionFromRequest(await signedRequest('legacy_role_1')), null);
+
+// O bypass historico: JSON puro no cookie, sem assinatura nenhuma.
+const jsonPuro = JSON.stringify({ userId: 'u1', username: 'u1', role: 'admin', loginTime: Date.now() });
+check('cookie JSON puro (formato antigo) e recusado', await getSessionFromRequest(requestWithCookie(jsonPuro)), null);
 
 console.log(failures === 0 ? '\nOK — todas as asserções passaram.' : `\nFALHOU — ${failures} asserção(ões).`);
 process.exit(failures === 0 ? 0 : 1);

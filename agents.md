@@ -54,7 +54,9 @@ prisma/
 
 ## 🔑 Auth & Multi-Tenancy
 
-- **Sessão**: Cookie `gts_session` = `JSON{userId, username, role, loginTime}` (8h)
+- **Sessão**: Cookie `gts_session` = `v1.<payload base64url>.<HMAC-SHA256>` (8h),
+  assinado com `SESSION_SECRET` (`lib/session-cookie.ts`). Cookie sem assinatura
+  válida — inclusive o JSON puro do formato antigo — é recusado.
 - **Hash**: `SHA-256(password + AUTH_SALT)`
 - **Roles**: `admin` | `client_a` | `client_b`
 - **Isolamento**: Coluna `userId` em Client, Equipment, AdminSetting

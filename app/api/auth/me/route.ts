@@ -3,7 +3,7 @@ import { getSessionFromRequest } from '@/lib/middleware-auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const user = getSessionFromRequest(request);
+    const user = await getSessionFromRequest(request);
     
     if (!user) {
       return NextResponse.json(

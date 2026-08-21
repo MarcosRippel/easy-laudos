@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { SESSION_COOKIE_NAME, verifySession } from '@/lib/session-cookie';
 
 const PUBLIC_ROUTES = ['/login'];
 const PUBLIC_PREFIXES = ['/verificar/'];
@@ -6,7 +7,6 @@ const PUBLIC_PREFIXES = ['/verificar/'];
 // usuário autenticado — settings são multi-tenant por userId. Apenas a gestão
 // de usuários (`/admin/users`) é restrita a admin.
 const ADMIN_ROUTES = ['/admin/users'];
-const SESSION_MAX_AGE = 8 * 60 * 60 * 1000;
 
 function resolveBaseUrl(request: NextRequest): URL {
   const forwardedHost = request.headers.get('x-forwarded-host');
@@ -24,7 +24,7 @@ function redirectTo(request: NextRequest, path: string) {
   return NextResponse.redirect(new URL(path, base));
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const response = NextResponse.next();
@@ -49,29 +49,26 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
-  // Verificar sessão
-  const sessionCookie = request.cookies.get('gts_session');
+  // Verificar sessão: o cookie só vale se a assinatura HMAC conferir e a
+  // sessão ainda não tiver expirado. Cookie ausente, forjado, adulterado ou
+  // vencido cai no mesmo lugar — de volta para o /login, sem o cookie.
+  const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME);
   if (!sessionCookie) {
     return redirectTo(request, '/login');
   }
 
-  try {
-    const session = JSON.parse(sessionCookie.value);
-
-    if (Date.now() - session.loginTime > SESSION_MAX_AGE) {
-      const redirect = redirectTo(request, '/login');
-      redirect.cookies.delete('gts_session');
-      return redirect;
-    }
-
-    if (ADMIN_ROUTES.some(p => pathname.startsWith(p)) && session.role !== 'admin') {
-      return redirectTo(request, '/');
-    }
-
-    return response;
-  } catch {
-    return redirectTo(request, '/login');
+  const session = await verifySession(sessionCookie.value);
+  if (!session) {
+    const redirect = redirectTo(request, '/login');
+    redirect.cookies.delete(SESSION_COOKIE_NAME);
+    return redirect;
   }
+
+  if (ADMIN_ROUTES.some(p => pathname.startsWith(p)) && session.role !== 'admin') {
+    return redirectTo(request, '/');
+  }
+
+  return response;
 }
 
 export const config = {

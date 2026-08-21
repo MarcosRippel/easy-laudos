@@ -111,7 +111,7 @@ async function tryExtract(base64: string, mimeType: string): Promise<ExtractedEq
 export async function POST(request: NextRequest) {
     console.log('🔥 [extract-certificate] Requisição recebida');
 
-    const session = getSessionFromRequest(request);
+    const session = await getSessionFromRequest(request);
     if (!session) {
         return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }

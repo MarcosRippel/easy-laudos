@@ -350,7 +350,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Multi-tenancy: buscar adminSettings pelo userId do inspetor logado
-    const session = getSessionFromRequest(request);
+    const session = await getSessionFromRequest(request);
     const userIdFilter = session && session.role !== 'admin' ? session.id : null;
     let adminSettings: AdminSetting | null = await prisma.adminSetting.findFirst({
       where: { userId: userIdFilter },

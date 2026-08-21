@@ -1,34 +1,33 @@
 import { NextRequest } from 'next/server';
 import { AuthUser, CLIENT_ROLES, isUserRole } from './roles';
+import { SESSION_COOKIE_NAME, verifySession } from './session-cookie';
 
-export function getSessionFromRequest(request: NextRequest): AuthUser | null {
-  try {
-    const sessionCookie = request.cookies.get('gts_session');
-    if (!sessionCookie) return null;
+/**
+ * Le a sessao do cookie `gts_session`.
+ *
+ * O cookie e assinado com HMAC-SHA256 (ver `lib/session-cookie.ts`): o valor
+ * so vira sessao depois que a assinatura confere com o `SESSION_SECRET` do
+ * ambiente. Cookie forjado, adulterado, expirado, do formato antigo (JSON
+ * puro) ou lido sem segredo configurado devolve `null` — fail-closed.
+ */
+export async function getSessionFromRequest(request: NextRequest): Promise<AuthUser | null> {
+  const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME);
+  if (!sessionCookie) return null;
 
-    const sessionData = JSON.parse(sessionCookie.value);
-    
-    // Verificar se a sessão não expirou (8 horas)
-    const now = Date.now();
-    const loginTime = sessionData.loginTime;
-    const maxAge = 8 * 60 * 60 * 1000; // 8 horas em ms
-    
-    if (now - loginTime > maxAge) {
-      return null;
-    }
+  // Assinatura + expiracao sao verificadas aqui dentro.
+  const sessionData = await verifySession(sessionCookie.value);
+  if (!sessionData) return null;
 
-    // A sessao vem de um cookie: o papel e dado nao confiavel ate ser validado
-    // contra o dominio de UserRole. Papel desconhecido = sessao invalida.
-    if (!isUserRole(sessionData.role)) return null;
+  // A assinatura garante que o papel saiu do nosso login, mas o valor ainda
+  // precisa pertencer ao dominio de UserRole (papel removido do sistema depois
+  // de a sessao ter sido emitida = sessao invalida).
+  if (!isUserRole(sessionData.role)) return null;
 
-    return {
-      id: sessionData.userId,
-      username: sessionData.username,
-      role: sessionData.role,
-    };
-  } catch {
-    return null;
-  }
+  return {
+    id: sessionData.userId,
+    username: sessionData.username,
+    role: sessionData.role,
+  };
 }
 
 export function requireAuth(user: AuthUser | null): boolean {

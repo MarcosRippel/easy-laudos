@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
+import { SESSION_COOKIE_NAME } from '@/lib/session-cookie';
 
 export async function POST() {
   try {
     const response = NextResponse.json({ success: true, message: 'Logout realizado com sucesso' });
     
     // Remover cookie de sessão
-    response.cookies.delete('gts_session');
+    response.cookies.delete(SESSION_COOKIE_NAME);
     
     return response;
   } catch (error) {

@@ -4,6 +4,13 @@
 
 O Easy Laudos usa **autenticação baseada em cookie de sessão** (sem JWT). A sessão dura **8 horas** e é armazenada no cookie `gts_session`.
 
+O cookie é **assinado com HMAC-SHA256** (`lib/session-cookie.ts`) usando a chave
+`SESSION_SECRET` do ambiente. O valor tem o formato `v1.<payload
+base64url>.<assinatura base64url>`, e a assinatura cobre `v1.<payload>` — mexer
+em qualquer campo (o `role`, por exemplo) invalida o cookie. Sem
+`SESSION_SECRET` configurado o app é *fail-closed*: não emite nem aceita sessão
+alguma. Trocar o `SESSION_SECRET` derruba todas as sessões abertas.
+
 ---
 
 ## 2. Fluxo de Autenticação
@@ -73,10 +80,10 @@ function hashPassword(password: string): string {
 **Arquivo**: `lib/middleware-auth.ts`
 
 ```typescript
-function getSessionFromRequest(request: NextRequest): AuthUser | null {
+async function getSessionFromRequest(request: NextRequest): Promise<AuthUser | null> {
   // 1. Lê cookie 'gts_session'
-  // 2. Parse JSON
-  // 3. Verifica expiração (8h)
+  // 2. Verifica a assinatura HMAC-SHA256 com SESSION_SECRET (lib/session-cookie.ts)
+  // 3. Verifica expiração (8h) e o domínio de UserRole
   // 4. Retorna { id, username, role } ou null
 }
 
@@ -146,6 +153,7 @@ if (!session) return NextResponse.json({error: 'Unauthorized'}, {status: 401});
 |------|--------|------|
 | HTTPS | ✅ | Via Cloudflare Tunnel ou scripts SSL locais |
 | Cookie HttpOnly | ✅ | gts_session tem HttpOnly |
+| Cookie assinado | ✅ | HMAC-SHA256 com `SESSION_SECRET`; forjar exige a chave |
 | Cookie SameSite | ✅ | SameSite=Lax |
 | Hash de senhas | ⚠️ | SHA-256 simples (considerar bcrypt/argon2) |
 | Rate limiting | ❌ | Não implementado |

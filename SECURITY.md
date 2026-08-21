@@ -26,6 +26,14 @@ Este é um projeto mantido por uma pessoa, sem SLA formal. O compromisso é:
 
 Não há garantia de prazo fixo de resposta — para um problema crítico com exploração ativa conhecida, mencione isso explicitamente no e-mail.
 
+## Variáveis de ambiente que o app exige
+
+`SESSION_SECRET` (mínimo 32 caracteres, `openssl rand -base64 32`) assina o
+cookie de sessão, e `AUTH_SALT` alimenta o hash de senha legado. Nenhuma das
+duas tem valor padrão no código: sem elas o app recusa login e sessão em vez de
+cair para um segredo previsível. Trocar `SESSION_SECRET` invalida todas as
+sessões abertas — é o que fazer ao suspeitar de vazamento.
+
 ## Segredos já expostos no histórico
 
 Este repositório teve chaves e tokens commitados no histórico git antes de se tornar público. Essas credenciais são consideradas queimadas (já rotacionadas) — não é necessário reportá-las como descoberta nova, mas se você encontrar um segredo que pareça **ainda ativo**, reporte por e-mail em vez de comentar publicamente onde ele está.

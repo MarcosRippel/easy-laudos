@@ -5,7 +5,7 @@ export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ cnpj: string }> }
 ) {
-    const session = getSessionFromRequest(request);
+    const session = await getSessionFromRequest(request);
     if (!session) {
         return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }

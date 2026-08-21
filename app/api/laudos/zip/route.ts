@@ -9,7 +9,7 @@ interface LaudoEntry {
 }
 
 export async function POST(request: NextRequest) {
-  const user = getSessionFromRequest(request);
+  const user = await getSessionFromRequest(request);
   if (!user) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
   }

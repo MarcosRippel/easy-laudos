@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyPassword } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { SESSION_COOKIE_NAME, signSession } from '@/lib/session-cookie';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,13 +26,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Criar sessão simples usando cookies httpOnly
-    const sessionData = {
+    // Criar sessão em cookie httpOnly ASSINADO (HMAC-SHA256). Sem assinatura
+    // o cookie seria só um JSON que qualquer um digita no DevTools.
+    const sessionCookie = await signSession({
       userId: user.id,
       username: user.username,
       role: user.role,
       loginTime: Date.now(),
-    };
+    });
 
     const response = NextResponse.json({
       success: true,
@@ -43,7 +45,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Definir cookie de sessão seguro
-    response.cookies.set('gts_session', JSON.stringify(sessionData), {
+    response.cookies.set(SESSION_COOKIE_NAME, sessionCookie, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
