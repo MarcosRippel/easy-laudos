@@ -150,7 +150,7 @@ class UploadsBackup {
     const groups = {
       vehiclePhotos: [],      // Fotos de veículos (FRENTE, LADO, etc)
       quintaRodaPhotos: [],   // Fotos de quinta roda (números)
-      clientLogos: [],       // Logos da Cliente
+      clientLogos: [],       // Logotipos do cliente
       pages: [],              // Páginas digitalizadas
       whatsapp: [],           // Imagens do WhatsApp
       others: []              // Outros
@@ -208,7 +208,7 @@ class UploadsBackup {
     log('📊 Análise dos arquivos:', 'cyan');
     log(`  • Fotos de veículos: ${groups.vehiclePhotos.length}`, 'cyan');
     log(`  • Fotos de quinta roda: ${groups.quintaRodaPhotos.length}`, 'cyan');
-    log(`  • Logos Cliente: ${groups.clientLogos.length}`, 'cyan');
+    log(`  • Logotipos do cliente: ${groups.clientLogos.length}`, 'cyan');
     log(`  • Páginas digitalizadas: ${groups.pages.length}`, 'cyan');
     log(`  • Imagens WhatsApp: ${groups.whatsapp.length}`, 'cyan');
     log(`  • Outros: ${groups.others.length}`, 'cyan');

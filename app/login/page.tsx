@@ -444,7 +444,7 @@ export default function LoginPage() {
 
           <div className={styles.footerSection}>
             <h3>Suporte</h3>
-            <a href="mailto:contato@example.com">contato@example.com</a>
+            <a href="mailto:suporte@example.com">suporte@example.com</a>
             <p>Atendimento especializado</p>
             <p>Onboarding e treinamento</p>
           </div>

@@ -245,7 +245,7 @@ erDiagram
 | companyPhone | String | NULLABLE | Telefone |
 | companyLogoUrl | String | NULLABLE | URL do logo |
 | reportTitle | String | DEFAULT | Título do laudo |
-| userId | String | FK, NULLABLE | null=admin, valor=client_a/2 |
+| userId | String | FK, NULLABLE | null=admin, valor=client_a/client_b |
 | updatedAt | DateTime | AUTO | Última atualização |
 
 **Relações**:

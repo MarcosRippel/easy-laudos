@@ -190,6 +190,10 @@ async function generateQuintaRodaPDF(laudoId: string, adminSettings: AdminSettin
 
   // Substituir placeholders no template
   const replacements = {
+    // Identidade da empresa emissora — vem de AdminSetting, nunca de literal
+    '{{companyName}}': adminSettings.companyName || '',
+    '{{companyAddress}}': adminSettings.companyAddress || '',
+    '{{companyPhone}}': adminSettings.companyPhone || '',
     // Dados Básicos
     '{{cliente}}': quintaRodaData.laudo.client.name || '',
     '{{placaVeiculo}}': quintaRodaData.laudo.vehicle.placa || '',

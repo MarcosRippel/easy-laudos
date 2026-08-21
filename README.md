@@ -487,7 +487,7 @@ Usuário Administrador:
 - Username: admin
 - Senha: [configurada no setup]
 
-Usuários Cliente:
+Usuários de inspetor:
 - client_a / [senha]
 - client_b / [senha]
 ```

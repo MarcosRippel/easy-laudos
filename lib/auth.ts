@@ -19,18 +19,16 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return sha256Legacy(password) === hash;
 }
 
-export type UserRole = 'admin' | 'client_a' | 'client_b';
-
-export interface AuthUser {
-  id: string;
-  username: string;
-  role: UserRole;
-}
-
-export function isAdmin(role: UserRole): boolean {
-  return role === 'admin';
-}
-
-export function isClientUser(role: UserRole): boolean {
-  return role === 'client_a' || role === 'client_b';
-}
+// O dominio de papeis vive em `lib/roles.ts` (sem dependencia de Node) para
+// poder ser importado por client components e pelo middleware. Reexportado
+// aqui para nao quebrar quem ja importava de `lib/auth`.
+export type { UserRole, AuthUser } from './roles';
+export {
+  USER_ROLES,
+  CLIENT_ROLES,
+  ROLE_LABELS,
+  roleLabel,
+  isUserRole,
+  isAdmin,
+  isClientUser,
+} from './roles';

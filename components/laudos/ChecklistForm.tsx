@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import type { Client, Vehicle, Laudo, AdminSetting } from '@prisma/client';
+import { companyHeaderLine } from '@/lib/companyIdentity';
 import { PDFDocument, rgb } from 'pdf-lib';
 import { download } from '@/lib/download';
 import { format } from 'date-fns';
@@ -539,7 +540,7 @@ export default function ChecklistForm({ clients, nextOrdemServico, temporalCode,
       }
 
       // Cabeçalho
-      drawText('EMPRESA EXEMPLO INSPEÇÕES LTDA - Rua Exemplo 100 - Cidade Exemplo /RS - Fone: (11) 90000-0000', 110, height - 30, 7);
+      drawText(companyHeaderLine(adminSettings), 110, height - 30, 7);
       drawText('Laudo CHECKLIST - Relatório de Preventiva', 220, height - 45, 12);
       drawText(`DATA: ${format(new Date(fullLaudo.dataEmissao), 'dd/MM/yyyy')}`, 480, height - 30, 8);
 

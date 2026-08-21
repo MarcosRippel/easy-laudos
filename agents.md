@@ -59,7 +59,7 @@ prisma/
 - **Roles**: `admin` | `client_a` | `client_b`
 - **Isolamento**: Coluna `userId` em Client, Equipment, AdminSetting
 - **Admin vê**: dados com `userId = null`
-- **Cliente vê**: dados com seu `userId` específico
+- **cliente vê**: dados com seu `userId` específico
 
 ---
 

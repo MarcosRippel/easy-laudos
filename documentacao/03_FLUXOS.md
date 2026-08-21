@@ -39,7 +39,7 @@
 │ 2. Se válido → setUser()     │
 │ 3. Se admin → redirect       │
 │    /admin                    │
-│ 4. Se cliente → redirect /   │
+│ 4. Se inspetor → redirect /   │
 │ 5. Se inválido → redirect    │
 │    /login                    │
 │                              │

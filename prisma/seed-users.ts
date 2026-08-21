@@ -1,13 +1,27 @@
 import { PrismaClient } from '@prisma/client';
 import { hashPassword } from '../lib/auth';
+import type { UserRole } from '../lib/auth';
 
 const prisma = new PrismaClient();
+
+/**
+ * Contas de inspetor criadas pelo seed.
+ *
+ * Os papeis `client_a` / `client_b` sao genericos de proposito: a identidade
+ * do cliente vive em `AdminSetting` (companyName / companyAddress / ...),
+ * nunca no papel nem no nome de usuario.
+ */
+const CLIENT_ACCOUNTS: { username: string; role: UserRole; suffix: string }[] = [
+  { username: 'client_a', role: 'client_a', suffix: 'A' },
+  { username: 'client_b', role: 'client_b', suffix: 'B' },
+];
 
 async function main() {
   console.log('🌱 Criando usuários iniciais...');
 
-  // Senha padrão para todos os usuários (não mostrar no frontend)
-  const defaultPassword = 'change-me';
+  // Senha inicial: sobrescreva com SEED_PASSWORD antes de rodar em qualquer
+  // ambiente que nao seja a sua maquina, e troque no primeiro login.
+  const defaultPassword = process.env.SEED_PASSWORD || 'change-me';
   const hashedPassword = await hashPassword(defaultPassword);
 
   // Criar usuário admin
@@ -22,78 +36,58 @@ async function main() {
     },
   });
 
-  // Criar usuário client_a
-  const client_a = await prisma.user.upsert({
-    where: { username: 'client_a' },
-    update: {},
-    create: {
-      username: 'client_a',
-      password: hashedPassword,
-      role: 'client_a',
-      isActive: true,
-    },
-  });
-
-  // Criar usuário client_b
-  const client_b = await prisma.user.upsert({
-    where: { username: 'client_b' },
-    update: {},
-    create: {
-      username: 'client_b',
-      password: hashedPassword,
-      role: 'client_b',
-      isActive: true,
-    },
-  });
+  const created = [];
+  for (const account of CLIENT_ACCOUNTS) {
+    const user = await prisma.user.upsert({
+      where: { username: account.username },
+      update: {},
+      create: {
+        username: account.username,
+        password: hashedPassword,
+        role: account.role,
+        isActive: true,
+      },
+    });
+    created.push({ ...account, id: user.id, username: user.username });
+  }
 
   console.log('✅ Usuários criados:');
   console.log(`- Admin: ${admin.username} (ID: ${admin.id})`);
-  console.log(`- ClientA: ${client_a.username} (ID: ${client_a.id})`);
-  console.log(`- ClientB: ${client_b.username} (ID: ${client_b.id})`);
-  
-  console.log('\n🔑 Credenciais de login:');
-  console.log('- admin / change-me');
-  console.log('- client_a / change-me');
-  console.log('- client_b / change-me');
+  for (const account of created) {
+    console.log(`- ${account.role}: ${account.username} (ID: ${account.id})`);
+  }
 
-  // Duplicar equipamentos para os usuários client_a e client_b
-  console.log('\n🔧 Duplicando equipamentos para usuários cliente...');
-  
+  console.log('\n🔑 Credenciais de login (senha inicial: $SEED_PASSWORD):');
+  console.log('- admin');
+  for (const account of created) {
+    console.log(`- ${account.username}`);
+  }
+
+  // Duplicar equipamentos do admin para cada conta de inspetor
+  console.log('\n🔧 Duplicando equipamentos para as contas de inspetor...');
+
   const existingEquipments = await prisma.equipment.findMany({
     where: { userId: null }, // Equipamentos do admin
   });
 
   for (const equipment of existingEquipments) {
-    // Duplicar para client_a
-    await prisma.equipment.create({
-      data: {
-        name: equipment.name,
-        model: equipment.model,
-        certificateNumber: `${equipment.certificateNumber}-C1`,
-        calibrationDate: equipment.calibrationDate,
-        expirationDate: equipment.expirationDate,
-        equipmentType: equipment.equipmentType,
-        isActive: equipment.isActive,
-        userId: client_a.id,
-      },
-    });
-
-    // Duplicar para client_b
-    await prisma.equipment.create({
-      data: {
-        name: equipment.name,
-        model: equipment.model,
-        certificateNumber: `${equipment.certificateNumber}-C2`,
-        calibrationDate: equipment.calibrationDate,
-        expirationDate: equipment.expirationDate,
-        equipmentType: equipment.equipmentType,
-        isActive: equipment.isActive,
-        userId: client_b.id,
-      },
-    });
+    for (const account of created) {
+      await prisma.equipment.create({
+        data: {
+          name: equipment.name,
+          model: equipment.model,
+          certificateNumber: `${equipment.certificateNumber}-${account.suffix}`,
+          calibrationDate: equipment.calibrationDate,
+          expirationDate: equipment.expirationDate,
+          equipmentType: equipment.equipmentType,
+          isActive: equipment.isActive,
+          userId: account.id,
+        },
+      });
+    }
   }
 
-  console.log(`✅ ${existingEquipments.length} equipamentos duplicados para cada usuário cliente`);
+  console.log(`✅ ${existingEquipments.length} equipamentos duplicados para cada conta de inspetor`);
 }
 
 main()

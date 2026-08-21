@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './AdminUsers.module.css';
+import { ROLE_LABELS, roleLabel } from '@/lib/roles';
 
 interface User {
   id: string;
@@ -183,8 +184,8 @@ export default function AdminUsersPage() {
               className={styles.select}
             >
               <option value="admin">Admin</option>
-              <option value="client_a">ClientA</option>
-              <option value="client_b">ClientB</option>
+              <option value="client_a">{ROLE_LABELS.client_a}</option>
+              <option value="client_b">{ROLE_LABELS.client_b}</option>
             </select>
           </div>
           <div className={styles.formActions}>
@@ -215,7 +216,7 @@ export default function AdminUsersPage() {
                 </td>
                 <td>
                   <span className={`${styles.role} ${styles[user.role]}`}>
-                    {user.role.toUpperCase()}
+                    {roleLabel(user.role).toUpperCase()}
                   </span>
                 </td>
                 <td>

@@ -18,7 +18,7 @@ model AdminSetting {
   companyLogoUrl   String?
   reportTitle      String    @default("LAUDO DE INSPEÇÃO TÉCNICA")
   nomeResponsavel  String?   // Nome do inspetor responsável — auto-preenchido nos laudos
-  userId           String?   // null para admin, preenchido para client_a/client_b
+  userId           String?   // null para admin, preenchido para as contas de inspetor
   user             User?     @relation(fields: [userId], references: [id])
   updatedAt        DateTime  @updatedAt
 }
@@ -35,7 +35,7 @@ model Client {
   addressDistrict String?
   phone           String?
   contactWhatsapp String?  // WhatsApp/telefone do responsável pelos laudos
-  userId          String?  // null para admin, preenchido para client_a/client_b
+  userId          String?  // null para admin, preenchido para as contas de inspetor
   user            User?    @relation(fields: [userId], references: [id])
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -110,7 +110,7 @@ model Equipment {
   expirationDate   DateTime // 2025-07-17
   equipmentType    String   // "DECIBELIMETRO", "CALIBRADOR", "OUTROS"
   isActive         Boolean  @default(true)
-  userId           String?  // null para admin, preenchido para client_a/client_b
+  userId           String?  // null para admin, preenchido para as contas de inspetor
   user             User?    @relation(fields: [userId], references: [id])
   
   // Relações
@@ -287,7 +287,7 @@ model User {
   id           String         @id @default(cuid())
   username     String         @unique
   password     String
-  role         String         // "admin", "client_a", "client_b"
+  role         String         // "admin", "client_a", "client_b" (ver UserRole em lib/auth.ts)
   isActive     Boolean        @default(true)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt

@@ -128,7 +128,7 @@ Tudo o mais → Requer gts_session válido
   Se não autenticado → redirect /login
   Se autenticado + pathname==='/login':
     Se admin → redirect /admin
-    Se cliente → redirect /
+    Se inspetor → redirect /
 ```
 
 ### Backend (API Routes)

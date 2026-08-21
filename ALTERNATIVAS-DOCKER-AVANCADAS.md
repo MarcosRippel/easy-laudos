@@ -26,7 +26,7 @@ services:
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
-      - "--certificatesresolvers.myresolver.acme.email=contato@example.com"
+      - "--certificatesresolvers.myresolver.acme.email=admin@example.com"
     networks:
       traefik-network:
         ipv4_address: 172.30.0.2
@@ -95,7 +95,7 @@ services:
 ```
 inspetor.terpens.com.br {
     reverse_proxy emissor-laudos:3000
-    tls contato@example.com
+    tls admin@example.com
 }
 ```
 
@@ -242,7 +242,7 @@ services:
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
       - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
-      - "--certificatesresolvers.letsencrypt.acme.email=contato@example.com"
+      - "--certificatesresolvers.letsencrypt.acme.email=admin@example.com"
       - "--certificatesresolvers.letsencrypt.acme.storage=/data/acme.json"
       - "--accesslog=true"
       - "--metrics.prometheus=true"

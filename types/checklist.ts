@@ -512,7 +512,7 @@ export const getExpandedInitialData = (ordemServico = '', codTemporal = ''): Exp
   medicao_estadoGeral: '',
   medicao_observacoes: '',
 
-  observacoes: 'Este relatório não pressupõe qualquer garantia explícita ou implícita dada pela EMPRESA EXEMPLO INSPEÇÕES LTDA, relativo ao Veículo inspecionado. Não isentando o fabricante e proprietário de suas responsabilidades quanto aos danos pessoais, materiais e ambientais ou quaisquer perdas provocadas por problemas de instalação, construção, manutenção e operação incorreta do veículo e seus acessórios.'
+  observacoes: 'Este relatório não pressupõe qualquer garantia explícita ou implícita dada pela a empresa emissora, relativo ao Veículo inspecionado. Não isentando o fabricante e proprietário de suas responsabilidades quanto aos danos pessoais, materiais e ambientais ou quaisquer perdas provocadas por problemas de instalação, construção, manutenção e operação incorreta do veículo e seus acessórios.'
 });
 
 // Seções do formulário para navegação

@@ -211,6 +211,10 @@ async function generatePinoReiPDF(laudoId: string, adminSettings: AdminSetting, 
 
   // Substituir placeholders no template
   const replacements = {
+    // Identidade da empresa emissora — vem de AdminSetting, nunca de literal
+    '{{companyName}}': adminSettings.companyName || '',
+    '{{companyAddress}}': adminSettings.companyAddress || '',
+    '{{companyPhone}}': adminSettings.companyPhone || '',
     // Dados Básicos
     '{{cliente}}': pinoReiData.laudo.client.name || '',
     '{{placaVeiculo}}': pinoReiData.laudo.vehicle.placa || '',

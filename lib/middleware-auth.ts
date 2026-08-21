@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { AuthUser } from './auth';
+import { AuthUser, CLIENT_ROLES, isUserRole } from './roles';
 
 export function getSessionFromRequest(request: NextRequest): AuthUser | null {
   try {
@@ -16,6 +16,10 @@ export function getSessionFromRequest(request: NextRequest): AuthUser | null {
     if (now - loginTime > maxAge) {
       return null;
     }
+
+    // A sessao vem de um cookie: o papel e dado nao confiavel ate ser validado
+    // contra o dominio de UserRole. Papel desconhecido = sessao invalida.
+    if (!isUserRole(sessionData.role)) return null;
 
     return {
       id: sessionData.userId,
@@ -36,5 +40,5 @@ export function requireAdmin(user: AuthUser | null): boolean {
 }
 
 export function requireClientUser(user: AuthUser | null): boolean {
-  return user !== null && (user.role === 'client_a' || user.role === 'client_b');
+  return user !== null && (CLIENT_ROLES as readonly string[]).includes(user.role);
 }

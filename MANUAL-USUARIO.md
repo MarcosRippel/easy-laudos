@@ -48,8 +48,8 @@ O Easy Laudos é um sistema completo para emissão e gerenciamento de laudos de 
 | Tipo | Permissões |
 |------|------------|
 | **Admin** | Acesso total ao sistema |
-| **ClientA** | Acesso aos seus próprios laudos e clientes |
-| **ClientB** | Acesso aos seus próprios laudos e clientes |
+| **Inspetor A** | Acesso aos seus próprios laudos e clientes |
+| **Inspetor B** | Acesso aos seus próprios laudos e clientes |
 
 ### Primeiro Acesso
 
@@ -355,7 +355,7 @@ Para usuários Admin:
 3. Defina:
    - Nome de usuário
    - Senha inicial
-   - Tipo (Admin/ClientA/ClientB)
+   - Tipo (Admin/Inspetor A/Inspetor B)
 4. Salve
 
 #### Resetar Senha

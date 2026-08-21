@@ -8,6 +8,7 @@ import type { Equipment } from '@/types/equipment';
 import { prisma } from '@/lib/prisma';
 import { getSessionFromRequest } from '@/lib/middleware-auth';
 import { getOrCreateLaudoHash } from '@/lib/laudoHash';
+import { companyHeaderLine } from '@/lib/companyIdentity';
 
 // Função para gerar PDF de laudo de ruído
 async function generateRuidoPDF(laudoId: string, adminSettings: AdminSetting, qrCodeSvg: string = '', documentHash: string = '') {
@@ -167,9 +168,9 @@ async function generateRuidoPDF(laudoId: string, adminSettings: AdminSetting, qr
     '{{osNumber}}': ruidoData.laudo.ordemServico || '',
     '{{temporalCode}}': ruidoData.laudo.codTemporal || '',
     '{{currentDate}}': format(new Date(), 'dd/MM/yyyy'),
-    '{{companyName}}': adminSettings.companyName || 'EMPRESA EXEMPLO INSPEÇÕES LTDA',
-    '{{companyAddress}}': `${adminSettings.companyAddress || 'Rua Exemplo 100 - Cidade Exemplo /RS'}`,
-    '{{companyPhone}}': adminSettings.companyPhone || '(11) 90000-0000',
+    '{{companyName}}': adminSettings.companyName || '',
+    '{{companyAddress}}': adminSettings.companyAddress || '',
+    '{{companyPhone}}': adminSettings.companyPhone || '',
     '{{companyEmail}}': '', // Campo não existe no AdminSetting
     '{{logoPath}}': logoBase64,
     '{{clientName}}': ruidoData.laudo.client.name || '',
@@ -366,9 +367,9 @@ async function generateLitHTML(fullLaudo: Laudo & { client: Client; vehicle: Veh
     .replace(/--- DADOS CHECKLIST ---[\s\S]*$/, '') // Remover dados checklist se houver
     .trim();
 
-  const companyName = adminSettings.companyName || 'EMPRESA EXEMPLO INSPEÇÕES LTDA';
-  const companyAddress = adminSettings.companyAddress || 'Rua Exemplo 100 - Cidade Exemplo/RS';
-  const companyPhone = adminSettings.companyPhone || '(11) 90000-0000';
+  const companyName = adminSettings.companyName || '';
+  const companyAddress = adminSettings.companyAddress || '';
+  const companyPhone = adminSettings.companyPhone || '';
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -1259,12 +1260,12 @@ async function generateChecklistHTML(fullLaudo: Laudo & { client: Client; vehicl
                 <div class="company-header">
                     <img src="${logoBase64}" alt="Logo" class="header-logo">
                     <div class="company-info">
-                        EMPRESA EXEMPLO INSPEÇÕES LTDA - Rua Exemplo 100 - Cidade Exemplo /RS - Fone: (11) 90000-0000
+                        ${companyHeaderLine(adminSettings)}
                     </div>
                 </div>
             ` : `
                 <div class="company-info" style="text-align: center; margin-bottom: 2px;">
-                    EMPRESA EXEMPLO INSPEÇÕES LTDA - Rua Exemplo 100 - Cidade Exemplo /RS - Fone: (11) 90000-0000
+                    ${companyHeaderLine(adminSettings)}
                 </div>
             `}
             <div class="title">Laudo CHECKLIST - Relatório de Preventiva</div>

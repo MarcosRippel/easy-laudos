@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import type { Client, Laudo, Vehicle, AdminSetting } from '@prisma/client';
+import { companyHeaderLine } from '@/lib/companyIdentity';
 import { PDFDocument, rgb, PDFFont } from 'pdf-lib';
 import { download } from '@/lib/download';
 import { format } from 'date-fns';
@@ -37,12 +38,12 @@ const getDefaultObservations = (laudoType: string) => {
   if (laudoType === 'LIT') {
     return `6.1- A verificação do veículo foi realizada com base na portaria INMETRO nº 457/2008, POP-OP001/0418
 6.2- O laudo preventivo contemplou os itens possíveis de serem verificados com o veículo em ordem de marcha.
-6.3- Este Laudo não pressupõe qualquer garantia explicíta ou implicíta pela EMPRESA EXEMPLO INSPEÇÕES, relativo ao veículo verificado, não isentando o fabricante e/ou proprietário de suas responsabilidades quanto aos danos pessoais, materiais e ambientais ou quaisquer perdas provocadas por problemas de instalação, construção, manutenção e operação incorreta do veículo e seus acessórios.
+6.3- Este Laudo não pressupõe qualquer garantia explicíta ou implicíta pela empresa emissora, relativo ao veículo verificado, não isentando o fabricante e/ou proprietário de suas responsabilidades quanto aos danos pessoais, materiais e ambientais ou quaisquer perdas provocadas por problemas de instalação, construção, manutenção e operação incorreta do veículo e seus acessórios.
 6.4- Verificação realizada com base itens de atendimento ao sistema SASSMAQ`;
   } else if (laudoType === 'CHECKLIST') {
-    return `Este relatório não pressupõe qualquer garantia explícita ou implícita dada pela EMPRESA EXEMPLO INSPEÇÕES LTDA, relativo ao Veículo inspecionado. Não isentando o fabricante e proprietário de suas responsabilidades quanto aos danos pessoais, materiais e ambientais ou quaisquer perdas provocadas por problemas de instalação, construção, manutenção e operação incorreta do veículo e seus acessórios.`;
+    return `Este relatório não pressupõe qualquer garantia explícita ou implícita dada pela empresa emissora, relativo ao Veículo inspecionado. Não isentando o fabricante e proprietário de suas responsabilidades quanto aos danos pessoais, materiais e ambientais ou quaisquer perdas provocadas por problemas de instalação, construção, manutenção e operação incorreta do veículo e seus acessórios.`;
   } else if (laudoType === 'QUINTA_RODA') {
-    return `Este laudo de quinta roda foi realizado conforme normas técnicas aplicáveis para verificação de sistemas de acoplamento. A inspeção contemplou exame visual dos componentes de quinta roda e elementos de fixação. Este relatório não pressupõe qualquer garantia explícita ou implícita dada pela EMPRESA EXEMPLO INSPEÇÕES LTDA, relativo ao equipamento inspecionado. Não isentando o fabricante e proprietário de suas responsabilidades quanto aos danos pessoais, materiais e ambientais.`;
+    return `Este laudo de quinta roda foi realizado conforme normas técnicas aplicáveis para verificação de sistemas de acoplamento. A inspeção contemplou exame visual dos componentes de quinta roda e elementos de fixação. Este relatório não pressupõe qualquer garantia explícita ou implícita dada pela empresa emissora, relativo ao equipamento inspecionado. Não isentando o fabricante e proprietário de suas responsabilidades quanto aos danos pessoais, materiais e ambientais.`;
   }
   return '';
 };
@@ -479,7 +480,7 @@ export default function CreateLaudoForm({ clients, nextOrdemServico, temporalCod
         console.log("No logo data available");
       }
       drawRect(40, height - 80, 520, 25, true, 0.75);
-      drawText('EMPRESA EXEMPLO INSPEÇÕES LTDA - Rua Exemplo 100 - Cidade Exemplo /RS - Fone: (11) 90000-0000', 45, height - 72, 7);
+      drawText(companyHeaderLine(adminSettings), 45, height - 72, 7);
       drawText('LAUDO INSPEÇÃO TÉCNICA', 220, height - 64, 10);
 
       // CORREÇÃO: Proteção contra "Invalid time value" na dataEmissao

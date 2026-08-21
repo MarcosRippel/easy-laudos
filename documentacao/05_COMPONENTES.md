@@ -46,7 +46,7 @@ RootLayout (app/layout.tsx)
 - **Lógica**:
   - Verifica sessão via `GET /api/auth/me`
   - Redireciona para `/login` se não autenticado
-  - Redireciona admin para `/admin`, cliente para `/`
+  - Redireciona admin para `/admin`, inspetor para `/`
   - Wraps children em `MainLayout` (exceto `/login`)
 
 ### MainLayout (`components/layout/MainLayout.tsx`)
