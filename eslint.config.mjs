@@ -20,6 +20,17 @@ const eslintConfig = [
     ],
   },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
+  {
+    // Base legada: estas regras apontam dívida real mas não podem travar o
+    // build de quem clona. Ficam como warning até a dívida ser paga — ver
+    // CONTRIBUTING.md. Código novo deve chegar sem esses avisos.
+    rules: {
+      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-unused-vars": "warn",
+      "@typescript-eslint/no-require-imports": "warn",
+      "prefer-const": "warn",
+    },
+  },
 ];
 
 export default eslintConfig;
