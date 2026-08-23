@@ -1,4 +1,4 @@
-# 📋 Easy Laudos — Emissão de Laudos de Inspeção Técnica Veicular
+# 📋 Easy Laudos — Plataforma de Emissão de Laudos Técnicos
 
 <div align="center">
 
@@ -9,9 +9,9 @@
 ![Prisma](https://img.shields.io/badge/Prisma-6.9.0-2D3748.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-**Sistema web para emissão de laudos técnicos de inspeção veicular, com geração de PDF e conformidade às normas brasileiras (ABNT, INMETRO, CONTRAN).**
+**Plataforma web para emissão de laudos técnicos — cadastro, preenchimento com evidência, verificação e geração de PDF profissional. O que é um "laudo" fica por sua conta: o projeto vem com um conjunto de exemplo pronto (inspeção veicular) que você usa como está ou troca pelos seus próprios tipos.**
 
-[Sobre](#-sobre-o-projeto) • [Rodando localmente](#-rodando-localmente) • [Estrutura](#-estrutura-do-projeto) • [Limitações](#%EF%B8%8F-limitações-e-estado-atual) • [Contribuindo](CONTRIBUTING.md)
+[Sobre](#-sobre-o-projeto) • [Rodando localmente](#-rodando-localmente) • [Estrutura](#-estrutura-do-projeto) • [Adaptar](#-adaptar-para-o-seu-tipo-de-laudo) • [Limitações](#%EF%B8%8F-limitações-e-estado-atual) • [Contribuindo](CONTRIBUTING.md)
 
 </div>
 
@@ -19,17 +19,21 @@
 
 ## 🎯 Sobre o projeto
 
-O **Easy Laudos** automatiza a emissão de laudos técnicos de inspeção de veículos pesados: cadastro de clientes e veículos, controle de equipamentos de medição (com alerta de vencimento de calibração) e geração de PDF profissional para cada tipo de laudo.
+O **Easy Laudos** é o esqueleto de um emissor de laudos: cadastro de clientes e do que for inspecionado, controle de equipamentos de medição (com alerta de vencimento de calibração), preenchimento com foto/evidência, verificação por hash e geração de PDF profissional. As partes reutilizáveis — autenticação, clientes, equipamentos, upload, verificação, PDF — são independentes do *tipo* de laudo.
 
-### Tipos de laudo suportados
+Para sair do zero, ele já vem com **cinco tipos de laudo de exemplo** de um domínio real (inspeção técnica de veículos pesados no Brasil). Eles não são o produto — são o material de referência: um mostra como modelar um checklist, outro como registrar medições numéricas com limites, outro um exame visual com enums. Adapte, renomeie ou apague o que não usar (ver [Adaptar para o seu tipo de laudo](#-adaptar-para-o-seu-tipo-de-laudo)).
 
-| Laudo | O que verifica |
+### Tipos de laudo de exemplo (já inclusos)
+
+Inspiração e ponto de partida — cada um exercita um padrão diferente de laudo. Ficam guardados no repositório para quem quiser usá-los ou copiá-los:
+
+| Laudo de exemplo | Padrão que demonstra |
 |---|---|
-| **Checklist de Inspeção** | Itens obrigatórios de verificação, com registro fotográfico |
-| **LIT** (Laudo de Inspeção Técnica) | Laudo geral com dados completos de cliente/veículo/equipamento |
-| **Ruído** | 6 medições em aceleração + 6 em marcha lenta (dB), limites CONTRAN |
-| **Pino Rei** | Exame visual do pino rei e da mesa de engate (5ª roda) |
-| **Quinta Roda** | 12 itens de exame visual da quinta roda |
+| **Checklist de Inspeção** | Lista de itens obrigatórios com registro fotográfico |
+| **LIT** (Laudo de Inspeção Técnica) | Laudo "geral" com dados completos de cliente/objeto/equipamento |
+| **Ruído** | Medições numéricas (dB) com limites e cálculo — padrão de laudo quantitativo |
+| **Pino Rei** | Exame visual com enums de resultado — padrão de laudo qualitativo |
+| **Quinta Roda** | Exame de N itens visuais — padrão de laudo por checklist estruturado |
 
 ### Stack
 
@@ -54,8 +58,8 @@ Não há dependência de banco externo para rodar localmente — o `DATABASE_URL
 
 ```bash
 # 1. Clonar e instalar dependências
-git clone https://github.com/MarcosRippel/general-laudos.git
-cd general-laudos
+git clone https://github.com/MarcosRippel/generalemissordelaudos-opensource.git
+cd generalemissordelaudos-opensource
 npm install
 
 # 2. Configurar variáveis de ambiente
@@ -97,7 +101,7 @@ Deploy em servidor próprio, Docker, Nginx e rotina de manutenção (backup, log
 ## 📁 Estrutura do projeto
 
 ```
-general-laudos/
+projeto/
 ├── app/                  # Next.js App Router
 │   ├── api/              # API Routes (backend) — auth, clients, vehicles, laudos, pdf, upload...
 │   ├── login/            # Rota pública de autenticação
@@ -113,6 +117,21 @@ general-laudos/
 ```
 
 Referência completa da API: [`API-REFERENCE.md`](API-REFERENCE.md). Esquema do banco: [`DATABASE-SCHEMA.md`](DATABASE-SCHEMA.md).
+
+---
+
+## 🧩 Adaptar para o seu tipo de laudo
+
+Os cinco laudos de exemplo não são cravados no núcleo — cada um é uma "fatia vertical" que você pode copiar como molde. Um tipo de laudo, na prática, é:
+
+1. **Um modelo no banco** — `model LaudoXxx` em `prisma/schema.prisma` (mais os `enum` que ele precisar). Compare `LaudoRuido` (campos numéricos) com `LaudoPinoRei` (enums de resultado) e escolha o mais parecido com o seu.
+2. **Rotas de API** — uma pasta em `app/api/laudos/<seu-tipo>/` (criar, listar, obter por id) espelhando uma das existentes.
+3. **Um formulário** — um componente em `components/laudos/` para preencher e enviar.
+4. **Um template de PDF** — a geração fica em `app/api/laudos/<seu-tipo>/pdf/`.
+
+O resto — login, clientes, equipamentos, upload de evidência, verificação por hash, listagem — já serve qualquer tipo sem alteração. Para começar do zero, apague as pastas `pino-rei/`, `quinta-roda/`, `ruido/` e os modelos correspondentes; para aproveitar, copie a que mais se parece com o seu caso.
+
+> As normas citadas nos exemplos (ABNT, INMETRO, CONTRAN) são específicas do domínio de inspeção veicular brasileira e valem só para esses laudos de exemplo — não são exigência da plataforma.
 
 ---
 

@@ -1,7 +1,7 @@
 {
   "name": "easy-laudos",
   "version": "0.1.0",
-  "description": "Sistema web de emissão de laudos técnicos de inspeção veicular (checklist, LIT, ruído, pino-rei e quinta-roda) com geração de PDF e conformidade às normas brasileiras.",
+  "description": "Plataforma web para emissão de laudos técnicos — relatórios estruturados com evidência, verificação e PDF profissional. Vem com um conjunto de exemplo (inspeção veicular: checklist, LIT, ruído, pino-rei, quinta-roda) que serve de modelo para você adaptar ou substituir pelos seus próprios tipos.",
   "license": "MIT",
   "repository": {
     "type": "git",
