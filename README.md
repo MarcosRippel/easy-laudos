@@ -58,8 +58,8 @@ Não há dependência de banco externo para rodar localmente — o `DATABASE_URL
 
 ```bash
 # 1. Clonar e instalar dependências
-git clone https://github.com/MarcosRippel/generalemissordelaudos-opensource.git
-cd generalemissordelaudos-opensource
+git clone https://github.com/MarcosRippel/easy-laudos.git
+cd easy-laudos
 npm install
 
 # 2. Configurar variáveis de ambiente

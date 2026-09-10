@@ -5,9 +5,9 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/MarcosRippel/general-laudos"
+    "url": "https://github.com/MarcosRippel/easy-laudos"
   },
-  "homepage": "https://github.com/MarcosRippel/general-laudos#readme",
+  "homepage": "https://github.com/MarcosRippel/easy-laudos#readme",
   "scripts": {
     "dev": "next dev -H 127.0.0.1 -p 3006 --turbopack",
     "build": "next build",

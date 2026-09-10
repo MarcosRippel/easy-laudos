@@ -14,8 +14,8 @@ curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
 # 2. Clonar o projeto
-git clone https://github.com/MarcosRippel/general-laudos.git
-cd general-laudos
+git clone https://github.com/MarcosRippel/easy-laudos.git
+cd easy-laudos
 
 # 3. Instalar dependências
 npm install --production
@@ -99,7 +99,7 @@ Para HTTPS local de desenvolvimento (sem domínio público), o repositório incl
 cp production.db backups/production_$(date +%Y%m%d).db
 
 # Backup automatizado (cron)
-0 2 * * * cp /caminho/para/general-laudos/production.db /backups/easy-laudos_$(date +\%Y\%m\%d).db
+0 2 * * * cp /caminho/para/easy-laudos/production.db /backups/easy-laudos_$(date +\%Y\%m\%d).db
 ```
 
 ### Verificação de Integridade

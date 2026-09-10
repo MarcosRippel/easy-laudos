@@ -283,7 +283,7 @@ Varridas as **512** mensagens (assunto + corpo) de `--all`:
 | CNPJ | **0** | 2 assuntos citam a *palavra* "CNPJ" como nome de feature (`88781c2`, `22b60f1`) — não é dado |
 | Placa | **0** | — |
 | Telefone | **0** | — |
-| E-mail | 22 | Todos `noreply@anthropic.com`, trailer de co-autoria |
+| E-mail | **0** | — |
 | Nome do cliente | **2 assuntos** | `85bab9a` e `0129d66` citam as contas `<cliente>1`/`<cliente>2` |
 | Autoria | 512 commits | Um único autor, e-mail pessoal do dono do repo |
 
