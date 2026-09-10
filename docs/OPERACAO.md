@@ -77,7 +77,7 @@ server {
 }
 ```
 
-> **[específico da instalação do mantenedor]** A instalação de referência expõe o app publicamente via **Cloudflare Tunnel** (Cloudflared) em vez de abrir a porta diretamente com Nginx + Certbot. Isso evita expor IP/porta do servidor. A alternativa genérica — sem depender de Cloudflare — é Nginx + Certbot (abaixo) ou qualquer outro proxy reverso com TLS.
+> **Cloudflare Tunnel** (o jeito que este projeto usava em produção): o app continua em `127.0.0.1:3006` e um `cloudflared` no mesmo PC publica o hostname com HTTPS, sem abrir porta no roteador. Passo a passo em [`CLOUDFLARE-TUNNEL.md`](CLOUDFLARE-TUNNEL.md). Sem Cloudflare, a alternativa é Nginx + Certbot (abaixo) ou qualquer outro proxy reverso com TLS.
 
 ## SSL com Certbot (Let's Encrypt)
 

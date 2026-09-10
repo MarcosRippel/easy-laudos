@@ -11,7 +11,7 @@
 
 **Plataforma web para emissão de laudos técnicos — cadastro, preenchimento com evidência, verificação e geração de PDF profissional. O que é um "laudo" fica por sua conta: o projeto vem com um conjunto de exemplo pronto (inspeção veicular) que você usa como está ou troca pelos seus próprios tipos.**
 
-[Sobre](#-sobre-o-projeto) • [Rodando localmente](#-rodando-localmente) • [Estrutura](#-estrutura-do-projeto) • [Adaptar](#-adaptar-para-o-seu-tipo-de-laudo) • [Limitações](#%EF%B8%8F-limitações-e-estado-atual) • [Contribuindo](CONTRIBUTING.md)
+[Sobre](#-sobre-o-projeto) • [Rodando localmente](#-rodando-localmente) • [Túnel Cloudflare](docs/CLOUDFLARE-TUNNEL.md) • [Estrutura](#-estrutura-do-projeto) • [Adaptar](#-adaptar-para-o-seu-tipo-de-laudo) • [Limitações](#%EF%B8%8F-limitações-e-estado-atual) • [Contribuindo](CONTRIBUTING.md)
 
 </div>
 
@@ -85,6 +85,8 @@ npx prisma studio
 ```
 
 O app sobe em `http://127.0.0.1:3006` — porta fixa definida no script `dev` do `package.json` (não a 3000 padrão do Next.js), livre para trocar editando `-p <porta>` no script. Não é acoplamento a infraestrutura: é só o valor que os scripts npm deste repo usam por padrão.
+
+Para expor essa instância local na internet **sem abrir porta no roteador** (HTTPS pela Cloudflare, app só em `127.0.0.1`): [`docs/CLOUDFLARE-TUNNEL.md`](docs/CLOUDFLARE-TUNNEL.md).
 
 Outros scripts disponíveis:
 
